@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{Core.translate.to([action, 'of_locale'])}"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   
+				   setHttpServiceController="locales"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   focusTarget="{localeTextInput}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			override public function yesFunction():void
+			{
+				if (action == 'adding')
+				{
+					Core.dispatchAllComponents(content);
+				}
+				
+				if (localeTextInput.validation() && checkUnique()) 
+				{
+					if (Core.getObjectLength(requestParams) > 0) 
+					{
+						requestParams.item_id = data ? data.@item_id : null;
+						setHttpService.send(requestParams);
+					}
+					else
+					{
+						Core.removeWindow(this);
+					}
+				}
+			}
+			
+			private function checkUnique():Boolean
+			{
+				if (action == 'adding')
+				{
+					if (!Core.checkUnique(Core.data.locales.dataProvider, '@locale', localeTextInput.text))
+					{
+						localeTextInput.errorString = Core.translate.to(['she_must', 'be', 'by_she_unique']);
+						localeTextInput.setFocus();
+						
+						return false;
+					}
+				}
+				
+				return true;
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (action == 'adding')
+					{
+						parentWindow['dataGridSet'].isNewRecord = true;
+					}
+					
+					parentWindow.reloadFunction();
+					Core.removeWindow(this);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:HGroup width="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:VGroup>
+							<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['locale'])}:"/>
+							<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['ru_RU'])}:"/>
+							<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['ua_UA'])}:"/>
+							<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['en_US'])}:"/>
+						</s:VGroup>
+						
+						<s:VGroup width="100%" minWidth="{Core.size * 200}" gap="5">
+							<extended:TextInput id="localeTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" validate="true" text="{getValue(data, 'locale')}" change="{changeValue('locale', event.target.text, action == 'adding')}" creationComplete="{event.target.setFocus()}"/>
+							<extended:TextInput width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'ru_RU')}" change="{changeValue('ru_RU', event.target.text, action == 'adding')}"/>
+							<extended:TextInput width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'ua_UA')}" change="{changeValue('ua_UA', event.target.text, action == 'adding')}"/>
+							<extended:TextInput width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'en_US')}" change="{changeValue('en_US', event.target.text, action == 'adding')}"/>
+						</s:VGroup>
+					</s:HGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

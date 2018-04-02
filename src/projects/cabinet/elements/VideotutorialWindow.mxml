@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="info"
+				   label="videotutorial"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   resizable="false"
+				   
+				   setHttpServiceController="videotutorial"
+				   
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.net.navigateToURL;
+			
+			import engine.core.Core;
+			
+			protected function playButton_clickHandler(event:MouseEvent):void
+			{
+				var urlRequest:URLRequest = new URLRequest();
+				urlRequest.url = 'https://www.youtube.com/watch?v=NrR8DwEPG5s';
+				navigateToURL(urlRequest, '_blank');
+				
+				setHttpService.send();
+				Core.removeWindow(this);
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<components:Button id="playButton" width="100%" paddingWidth="5" paddingHeight="5" image="{Core.serverUrl + '/static/images/video.png'}" click="playButton_clickHandler(event)"/>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

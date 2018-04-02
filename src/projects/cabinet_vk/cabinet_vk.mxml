@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:components="engine.components.*"
+			   
+			   backgroundColor="0xffffff"
+			   color="0x000000"
+			   
+			   width="1000"
+			   height="650"
+			   
+			   minWidth="1000"
+			   minHeight="650"
+			   
+			   creationComplete="creationCompleteHandler(event)"
+			   
+			   mouseUp="mouseUpHandler(event)"
+			   
+			   fontSize="{Core.size * Core.sizeMultiplier / 2}"
+			   
+			   frameRate="120"
+			   
+			   xmlns:viewport="engine.components.viewport.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import mx.managers.ToolTipManager;
+			
+			import engine.core.Core;
+			
+			import projects.cabinet.managers.Data;
+			import projects.cabinet.managers.Menus;
+			import projects.cabinet_vk.managers.Launcher;
+			
+			
+			//do not change!!!
+			public var launcher:Launcher = new projects.cabinet_vk.managers.Launcher();
+			public var menus:Menus = new Menus();
+			public var data:Data = new Data();
+			
+			[Bindable]
+			public var startWindowItemsArray:Array = [
+				{type:'Button', label:'help', icon:'info', action:'HelpWindow'},
+				/*{type:'HSplitter'},
+				{type:'Button', label:'balance_refills_history', icon:'wallet', action:'BalanceRefillsHistoryWindow'},
+				{type:'Button', label:'payments_history', icon:'credit_card', action:'PaymentsHistoryWindow'},*/
+				{type:'HSplitter'}, 
+				{type:'Button', label:'home_accounting', icon:'home', action:'HAWindow'},
+				
+				/*{type:'Button', label:'contacts', icon:'man', action:'ContactsWindow'}*/
+			];
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				percentWidth = 100;
+				percentHeight = 100;
+				
+				//Core.serverUrl = 'http://nickcool.tk';
+				//Core.serverUrl = 'http://loc.profit';
+				//Core.serverUrl = 'http://vk.theprofit.tk';
+				//Core.serverUrl = 'https://profit-yourgalaxy.rhcloud.com/vk';
+				Core.serverUrl = 'https://gate-vk.theprofit.tk/vk';
+				
+				Core.apiType = 'vk';
+				
+				Core.getHttpServiceModule = 'cabinet';
+				Core.setHttpServiceModule = 'cabinet';
+				
+				Core.init();
+				
+				viewport.imageSource = Core.serverUrl + '/static/images/logo/logo.jpg';
+				
+				ToolTipManager.showDelay = 0;
+			}
+			
+			public function onIdentificationSuccess():void
+			{
+				/*Core.callAfter(function():void
+				{
+					Core.launcher.launch('HAWindow');					
+				}, 10000);*/
+			}
+			
+			protected function mouseUpHandler(event:MouseEvent):void
+			{
+				stopDrag();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:Border/>
+	<viewport:Viewport id="viewport"/>
+	
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		@namespace components "engine.components.*";
+		@namespace wireframe "mx.skins.wireframe.*";
+		
+		*
+		{
+			verticalAlign: middle;
+			borderColor: #333333;
+			borderAlpha: 0.5;
+			chromeColor: #ffffff;
+		}
+		
+		mx|MenuBar
+		{
+			backgroundSkin: Embed("/assets/images/empty.png");
+			paddingLeft: 0;
+		}
+		
+		s|VScrollBar
+		{
+			skinClass: ClassReference("engine.skins.VScrollBarSkin");
+		}
+		
+		s|HScrollBar
+		{
+			skinClass: ClassReference("engine.skins.HScrollBarSkin");
+		}
+		
+		mx|ScrollBar
+		{
+			thumbSkin: ClassReference("engine.skins.ScrollBarThumbSkin");
+		}
+	</fx:Style>
+	
+</s:Application>

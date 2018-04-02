@@ -1,0 +1,812 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:FieldSet xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					 xmlns:s="library://ns.adobe.com/flex/spark" 
+					 xmlns:mx="library://ns.adobe.com/flex/mx"
+					 width="100%"
+					 creationComplete="creationCompleteHandler(event)"
+					 xmlns:components="engine.components.*"
+					 xmlns:extended="engine.extended.*">
+	
+	<fx:Metadata>
+		[Event(name="change", type="flash.events.Event")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.CalendarLayoutChangeEvent;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import engine.core.Core;
+			
+			[Event(name="change", type="mx.events.Event")]
+			[DefaultTriggerEvent("change")]
+			
+			[Bindable]
+			public var range:String = '';
+			
+			[Bindable]
+			public var action:String = '';
+			
+			[Bindable]
+			public var initialised:Boolean;
+			
+			private var yearStep:Number = 0;
+			private var monthStep:Number = 0;
+			private var dayStep:Number = 0;
+			
+			[Bindable]
+			public var inRange:Boolean = true;
+			
+			[Bindable]
+			public var onChangeFunction:Function;
+			
+			[Bindable]
+			public var dispatchEventOnSetDate:Boolean;
+			
+			[Bindable]
+			public var fromDate:Date;
+			[Bindable]
+			public var toDate:Date;
+			
+			[Bindable]
+			public var hoursEnabled:Boolean;
+			
+			private var timer:Timer = new Timer(500, 1);
+			
+			public function init():void
+			{
+				if (action.length > 0)
+				{
+					Core.selectItem(comboBox, 'action', action, true);
+				}
+				else if (range.length > 0)
+				{
+					setDate();
+				}
+			}
+			
+			private function setDate():void
+			{
+				var date:Date = new Date();
+				switch(range)
+				{
+					case 'year':
+					{
+						fromDateField.selectedDate = new Date(date.getFullYear() + yearStep, 0, 1);
+						toDateField.selectedDate = new Date(date.getFullYear() + yearStep + 1, 0, 0);
+						
+						Core.selectItem(comboBox, 'action', 'currentYear', false);
+						break;
+					}
+						
+					case 'month':
+					{
+						fromDateField.selectedDate = new Date(date.getFullYear() + yearStep, date.getMonth() + monthStep, 1);
+						toDateField.selectedDate = new Date(date.getFullYear() + yearStep, date.getMonth() + monthStep + 1, 0);
+						
+						Core.selectItem(comboBox, 'action', 'currentMonth', false);
+						break;
+					}
+						
+					case 'day':
+					{
+						fromDateField.selectedDate = new Date(date.getFullYear() + yearStep, date.getMonth() + monthStep, date.getDate() + dayStep);
+						toDateField.selectedDate = new Date(date.getFullYear() + yearStep, date.getMonth() + monthStep, date.getDate() + dayStep);
+						
+						Core.selectItem(comboBox, 'action', 'currentDay', false);
+						break;
+					}
+				}
+				
+				checkRange();
+				
+				if (dispatchEventOnSetDate)
+				{
+					dispatchEventOnSetDate = false;
+					dispatchEventFunction();
+				}
+			}
+			
+			protected function fromDateField_changeHandler(event:CalendarLayoutChangeEvent):void
+			{
+				/*if (!toDateField.selectedDate)
+				{
+					toDateField.selectedDate = new Date();
+				}*/
+				
+				if (fromDateField.selectedDate > toDateField.selectedDate && Core.hideUndefined(toDateField.text) !== '')
+				{
+					toDateField.selectedDate = fromDateField.selectedDate;
+				}
+				
+				range = '';
+				comboBox.selectedIndex = -1;
+				
+				checkRange();
+				dispatchEventFunction();
+			}
+			
+			protected function toDateField_changeHandler(event:CalendarLayoutChangeEvent):void
+			{
+				if (toDateField.selectedDate < fromDateField.selectedDate && Core.hideUndefined(fromDateField.text) !== '')
+				{
+					fromDateField.selectedDate = toDateField.selectedDate;
+				}
+				
+				range = '';
+				comboBox.selectedIndex = -1;
+				
+				checkRange();
+				dispatchEventFunction();
+			}
+			
+			protected function leftButton_clickHandler(event:MouseEvent):void
+			{
+				switch(range)
+				{
+					case 'year':
+					{
+						yearStep -= 1;
+						break;
+					}
+						
+					case 'month':
+					{
+						monthStep -= 1;
+						break;
+					}
+						
+					case 'day':
+					{
+						dayStep -= 1;
+						break;
+					}
+						
+					default :
+					{
+						var duration:Number = toDateField.selectedDate.time - fromDateField.selectedDate.time + (24 * 60 * 60 * 1000);
+						fromDateField.selectedDate = new Date(fromDateField.selectedDate.time - duration);
+						toDateField.selectedDate = new Date(toDateField.selectedDate.time - duration);
+					}
+				}
+				
+				setDate();
+				dispatchEventFunction();
+			}
+			
+			protected function rightButton_clickHandler(event:MouseEvent):void
+			{
+				switch(range)
+				{
+					case 'year':
+					{
+						yearStep += 1;
+						break;
+					}
+						
+					case 'month':
+					{
+						monthStep += 1;
+						break;
+					}
+						
+					case 'day':
+					{
+						dayStep += 1;
+						break;
+					}
+						
+					default :
+					{
+						var duration:Number = toDateField.selectedDate.time - fromDateField.selectedDate.time + (24 * 60 * 60 * 1000);
+						fromDateField.selectedDate = new Date(fromDateField.selectedDate.time + duration);
+						toDateField.selectedDate = new Date(toDateField.selectedDate.time + duration);
+					}
+				}
+				
+				setDate();
+				dispatchEventFunction();
+			}
+			
+			protected function yearTriggerButton_clickHandler(event:MouseEvent):void
+			{
+				Core.selectItem(comboBox, 'action', 'currentYear', true);
+			}
+			
+			protected function monthTriggerButton_clickHandler(event:MouseEvent):void
+			{
+				Core.selectItem(comboBox, 'action', 'currentMonth', true);
+			}
+			
+			protected function dayTriggerButton_clickHandler(event:MouseEvent):void
+			{
+				Core.selectItem(comboBox, 'action', 'currentDay', true);
+			}
+			
+			private function checkRange(comboBoxSelectItem:Boolean = true):void
+			{
+				var date:Date = new Date();
+				
+				if ((range == 'year' && fromDateField.selectedDate.time == new Date(date.getFullYear(), 0, 1).time && toDateField.selectedDate.time == new Date(date.getFullYear() + 1, 0, 0).time) ||
+					(range == 'month' && fromDateField.selectedDate.time == new Date(date.getFullYear(), date.getMonth(), 1).time && toDateField.selectedDate.time == new Date(date.getFullYear(), date.getMonth() + 1, 0).time) ||
+					(range == 'day' && fromDateField.selectedDate.time == new Date(date.getFullYear(), date.getMonth(), date.getDate()).time && toDateField.selectedDate.time == new Date(date.getFullYear(), date.getMonth(), date.getDate()).time))
+				{
+					inRange = true;
+					
+					if (comboBoxSelectItem)
+					{
+						switch(range)
+						{
+							case 'year':
+							{
+								Core.selectItem(comboBox, 'action', 'currentYear', false);
+								break;
+							}
+								
+							case 'month':
+							{
+								Core.selectItem(comboBox, 'action', 'currentMonth', false);
+								break;
+							}
+								
+							case 'day':
+							{
+								Core.selectItem(comboBox, 'action', 'currentDay', false);
+								break;
+							}
+						}
+					}
+				}
+				else
+				{
+					inRange = false;
+					//comboBox.selectedIndex = -1;
+				}
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				timer.addEventListener(TimerEvent.TIMER, timer_timerHandler);
+				init();
+			}
+			
+			private function timer_timerHandler(event:TimerEvent):void
+			{
+				dispatchEventFunction();
+			}
+			
+			private function reset():void
+			{
+				timer.stop();
+				timer.start();
+			}
+			
+			private function dispatchEventFunction():void
+			{
+				Core.callAfter(function():void
+				{
+					fromDate = fromDateField.selectedDate;
+					if (fromDate && range == 'day' && hoursEnabled)
+					{
+						fromDate = new Date(fromDate.time + fromHSlider.value * 60 * 60 * 1000);
+					}
+					
+					toDate = toDateField.selectedDate;
+					if (fromDate && range == 'day' && hoursEnabled)
+					{
+						toDate = new Date(toDate.time - (toHSlider.maximum - toHSlider.value) * 60 * 60 * 1000);
+					}
+					
+					initialised = true;
+					dispatchEvent(new Event('change'));
+					
+					if (Boolean(onChangeFunction))
+					{
+						callLater(onChangeFunction);
+					}					
+				}, 100);
+			}
+			
+			protected function comboBox_changeHandler(event:IndexChangeEvent):void
+			{
+				if (comboBox.selectedItem)
+				{
+					var date:Date = new Date();
+					
+					switch(comboBox.selectedItem.action)
+					{
+						case 'allTime':
+						{
+							fromDateField.selectedDate = null;
+							toDateField.selectedDate = null;
+							
+							range = '';
+							break;
+						}
+							
+						case 'fromBeginingOfYear':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 0, 1);
+							toDateField.selectedDate = new Date();
+							
+							range = '';
+							break;
+						}
+							
+						case 'currentYear':
+						{
+							yearTriggerButton.selected = true;
+							range = 'year';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							setDate();
+							break;
+						}
+							
+						case 'fromBeginingOfQuarter':
+						{
+							if (new Date().month <= 2)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 0, 1);
+							}
+							else if (new Date().month <= 5)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 3, 1);
+							}
+							else if (new Date().month <= 8)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 6, 1);
+							}
+							else if (new Date().month <= 11)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 9, 1);
+							}
+
+							toDateField.selectedDate = new Date();
+							range = '';
+							break;
+						}
+							
+						case 'currentQuarter':
+						{
+							if (new Date().month <= 2)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 0, 1);
+								toDateField.selectedDate = new Date(date.getFullYear(), 3, 0);
+							}
+							else if (new Date().month <= 5)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 3, 1);
+								toDateField.selectedDate = new Date(date.getFullYear(), 6, 0);
+							}
+							else if (new Date().month <= 8)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 6, 1);
+								toDateField.selectedDate = new Date(date.getFullYear(), 9, 0);
+							}
+							else if (new Date().month <= 11)
+							{
+								fromDateField.selectedDate = new Date(date.getFullYear(), 9, 1);
+								toDateField.selectedDate = new Date(date.getFullYear(), 12, 0);
+							}
+
+							range = '';
+							break;
+						}
+							
+						case 'fromBeginingOfMonth':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), date.month, 1);
+							toDateField.selectedDate = new Date();
+							
+							range = '';
+							break;
+						}
+							
+						case 'currentMonth':
+						{
+							monthTriggerButton.selected = true;
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							setDate();
+							break;
+						}
+						
+						case 'fromBeginingOfWeek':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), date.month, date.date - date.day + (resourceManager.localeChain[0] == 'en_US' ? 0 : 1));
+							toDateField.selectedDate = new Date();
+							
+							range = '';
+							break;
+						}
+							
+						case 'sheCurrentWeek':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), date.month, date.date - date.day + (resourceManager.localeChain[0] == 'en_US' ? 0 : 1));
+							toDateField.selectedDate = new Date(fromDateField.selectedDate.time + (6 * 24 * 60 * 60 * 1000));
+							
+							range = '';
+							break;
+						}
+						
+						case 'currentDay':
+						{
+							dayTriggerButton.selected = true;
+							range = 'day';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							setDate();
+							break;
+						}
+							
+						case 'previousYear':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear() - 1, 0, 1);
+							toDateField.selectedDate = new Date(date.getFullYear() - 1, 12, 0);
+							
+							range = 'year';
+							checkRange(false);
+							break;
+						}
+							
+						case 'january':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 0, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 1, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'february':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 1, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 2, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'march':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 2, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 3, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'IQuarter':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 0, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 3, 0);
+							
+							range = '';
+							break;
+						}
+							
+						case 'april':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 3, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 4, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'may':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 4, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 5, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'june':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 5, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 6, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'IIQuarter':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 3, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 6, 0);
+							
+							range = '';
+							break;
+						}
+							
+						case 'july':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 6, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 7, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'august':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 7, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 8, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'september':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 8, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 9, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'IIIQuarter':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 6, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 9, 0);
+							
+							range = '';
+							break;
+						}
+							
+						case 'october':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 9, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 10, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'november':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 10, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 11, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'december':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 11, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 12, 0);
+							
+							range = 'month';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						case 'IVQuarter':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear(), 9, 1);
+							toDateField.selectedDate = new Date(date.getFullYear(), 12, 0);
+							
+							range = '';
+							break;
+						}
+							
+						case 'nextYear':
+						{
+							fromDateField.selectedDate = new Date(date.getFullYear() + 1, 0, 1);
+							toDateField.selectedDate = new Date(date.getFullYear() + 1, 12, 0);
+							
+							range = 'year';
+							
+							yearStep = 0;
+							monthStep = 0;
+							dayStep = 0;
+							
+							checkRange(false);
+							break;
+						}
+							
+						default:
+						{
+							break;
+						}
+					}
+					
+					action = comboBox.selectedItem.action;
+					
+					dispatchEventFunction();
+				}
+			}
+			
+			protected function fromHSlider_changeHandler(event:Event):void
+			{
+				if (fromHSlider.value > toHSlider.value)
+				{
+					toHSlider.value = fromHSlider.value;
+				}
+				
+				reset();
+			}
+			
+			protected function toHSlider_changeHandler(event:Event):void
+			{
+				if (toHSlider.value < fromHSlider.value)
+				{
+					fromHSlider.value = toHSlider.value;
+				}
+				
+				reset();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:VGroup width="100%" gap="5" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5">
+			<!--<s:VGroup width="100%" gap="5">
+				<s:Label width="100%" height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to([label])}"/>
+				<components:HSplitter/>
+			</s:VGroup>  -->
+			
+			<extended:ComboBox id="comboBox" width="100%" height="{Core.size * Core.sizeMultiplier}" selectedIndex="0" defaultSelectedIndex="0" prompt="{Core.translate.to(['reporting_period'])}" change="comboBox_changeHandler(event)">
+				<extended:layout>
+					<s:VerticalLayout gap="0" horizontalAlign="contentJustify" requestedRowCount="20" requestedMinRowCount="1" requestedMaxRowCount="20"/>
+				</extended:layout>
+				<extended:dataProvider>
+					<s:ArrayCollection>
+						<fx:Object action="allTime" label="{Core.translate.to(['all_time'])}"/>
+						
+						<fx:Object action="fromBeginingOfYear" label="{Core.translate.to(['from_begining of_year'])}"/>
+						<fx:Object action="currentYear" label="{Core.translate.to(['he_current year'])}"/>
+						
+						<fx:Object action="fromBeginingOfQuarter" label="{Core.translate.to(['from_begining of_quarter'])}"/>
+						<fx:Object action="currentQuarter" label="{Core.translate.to(['he_current quarter'])}"/>
+						
+						<fx:Object action="fromBeginingOfMonth" label="{Core.translate.to(['from_begining of_month'])}"/>
+						<fx:Object action="currentMonth" label="{Core.translate.to(['he_current month'])}"/>
+						
+						<fx:Object action="fromBeginingOfWeek" label="{Core.translate.to(['from_begining of_week'])}"/>
+						<fx:Object action="sheCurrentWeek" label="{Core.translate.to(['she_current week'])}"/>
+						
+						<fx:Object action="currentDay" label="{Core.translate.to(['he_current day'])}"/>
+						
+						<fx:Object action="previousYear" label="{Core.translate.to(['he_previous year'])}"/>
+						
+						<fx:Object action="january" label="{Core.translate.to(['january'])}"/>
+						<fx:Object action="february" label="{Core.translate.to(['february'])}"/><!-- -->
+						<fx:Object action="march" label="{Core.translate.to(['march'])}"/><!-- -->
+						<fx:Object action="IQuarter" label="I {Core.translate.to(['quarter'])}"/><!-- -->
+						
+						<fx:Object action="april" label="{Core.translate.to(['april'])}"/><!-- -->
+						<fx:Object action="may" label="{Core.translate.to(['may'])}"/><!-- -->
+						<fx:Object action="june" label="{Core.translate.to(['june'])}"/><!-- -->
+						<fx:Object action="IIQuarter" label="II {Core.translate.to(['quarter'])}"/><!-- -->
+						
+						<fx:Object action="july" label="{Core.translate.to(['july'])}"/><!-- -->
+						<fx:Object action="august" label="{Core.translate.to(['august'])}"/><!-- -->
+						<fx:Object action="september" label="{Core.translate.to(['september'])}"/><!-- -->
+						<fx:Object action="IIIQuarter" label="III {Core.translate.to(['quarter'])}"/><!-- -->
+						
+						<fx:Object action="october" label="{Core.translate.to(['october'])}"/><!-- -->
+						<fx:Object action="november" label="{Core.translate.to(['november'])}"/><!-- -->
+						<fx:Object action="december" label="{Core.translate.to(['december'])}"/><!-- -->
+						<fx:Object action="IVQuarter" label="IV {Core.translate.to(['quarter'])}"/><!-- -->
+						
+						<fx:Object action="nextYear" label="{Core.translate.to(['he_next year'])}"/>
+						
+						<!-- -->
+						<!-- -->
+						<!-- -->
+						
+
+					</s:ArrayCollection>
+				</extended:dataProvider>
+			</extended:ComboBox>
+			
+			<s:HGroup width="100%" gap="5">
+				<extended:DateField id="fromDateField" width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" textAlign="center" hideIcon="true" yearNavigationEnabled="true" formatString="YYYY-MM-DD" change="fromDateField_changeHandler(event)"/>
+				<extended:DateField id="toDateField" width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" textAlign="center" hideIcon="true" yearNavigationEnabled="true" formatString="YYYY-MM-DD" change="toDateField_changeHandler(event)"/>
+			</s:HGroup>
+			
+			<s:HGroup width="100%" gap="5">
+				<components:Button id="leftButton" height="100%" paddingHeight="0" enabled="{action !== 'allTime'}" icon="arrow_left" click="leftButton_clickHandler(event)"/>
+				<components:Button id="yearTriggerButton" width="100%" height="100%" paddingHeight="0" triger="true" selected="{range == 'year'}" overColor="{inRange &amp;&amp; yearTriggerButton.selected ? Core.lightBlue : Core.gray}" downColor="{inRange &amp;&amp; yearTriggerButton.selected ? Core.blue : Core.darkGray}" label="{Core.translate.to(['year'])}" click="yearTriggerButton_clickHandler(event)"/>
+				<components:Button id="monthTriggerButton" width="100%" height="100%" paddingHeight="0" triger="true" selected="{range == 'month'}" overColor="{inRange &amp;&amp; monthTriggerButton.selected ? Core.lightBlue : Core.gray}" downColor="{inRange &amp;&amp; monthTriggerButton.selected ? Core.blue : Core.darkGray}" label="{Core.translate.to(['month'])}" click="monthTriggerButton_clickHandler(event)"/>
+				<components:Button id="dayTriggerButton" width="100%" height="100%" paddingHeight="0" triger="true" selected="{range == 'day'}" overColor="{inRange &amp;&amp; dayTriggerButton.selected ? Core.lightBlue : Core.gray}" downColor="{inRange &amp;&amp; dayTriggerButton.selected ? Core.blue : Core.darkGray}" label="{Core.translate.to(['day'])}" click="dayTriggerButton_clickHandler(event)"/>
+				<components:Button id="rightButton" height="100%" paddingHeight="0" enabled="{action !== 'allTime'}" icon="arrow_right" click="rightButton_clickHandler(event)"/>
+			</s:HGroup>
+			
+			<s:HGroup width="100%" gap="2" visible="{range == 'day' &amp;&amp; hoursEnabled}" includeInLayout="{range == 'day' &amp;&amp; hoursEnabled}">
+				<extended:HSlider id="fromHSlider" width="100%" value="0" minimum="0" maximum="23" toolTip="{Core.translate.to(['from'])}: {Core.addZeros(fromHSlider.value)}:00:00" change="fromHSlider_changeHandler(event)"/>
+				<extended:HSlider id="toHSlider" width="100%" value="23" minimum="0" maximum="23" toolTip="{Core.translate.to(['to'])}: {Core.addZeros(toHSlider.value)}:59:59" change="toHSlider_changeHandler(event)"/>				
+			</s:HGroup>
+		</s:VGroup>  
+	</components:content>
+</components:FieldSet>

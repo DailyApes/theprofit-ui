@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:HGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 width="100%"
+		 gap="0">
+	
+	<fx:Declarations>
+		<!-- Разместить невизуальные элементы (например, службы или объекты значений) -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.FlexGlobals;
+			import mx.rpc.http.HTTPService;
+			
+			import engine.core.CoreMobile;
+
+			[Bindable]
+			public var closeButtonEnabled:Boolean;
+			[Bindable]
+			public var homeButtonEnabled:Boolean;
+			[Bindable]
+			public var logoutButtonEnabled:Boolean;
+			[Bindable]
+			public var backButtonEnabled:Boolean = true;
+			
+			[Bindable]
+			public var logoutHttpServiceAction:String = '';
+			[Bindable]
+			public var logoutHttpServiceModule:String = '';
+			[Bindable]
+			public var logoutHttpServiceController:String = '';
+			
+			public function closeButton_clickHandler(event:MouseEvent):void
+			{
+				NativeApplication.nativeApplication.exit();
+			}
+			
+			public function homeButton_clickHandler(event:MouseEvent):void
+			{
+				FlexGlobals.topLevelApplication.viewNavigator.popToFirstView();
+			}
+			
+			public function logoutButton_clickHandler(event:MouseEvent):void
+			{
+				var logoutHttpService:HTTPService = new HTTPService();
+				logoutHttpService.url = CoreMobile.serverUrl + (CoreMobile.yii ? '/?r=' : '/') + (logoutHttpServiceModule.length > 0 ? logoutHttpServiceModule : CoreMobile.setHttpServiceModule) + (logoutHttpServiceModule.length > 0 || CoreMobile.setHttpServiceModule.length > 0 ? '/' : '') + logoutHttpServiceController + (logoutHttpServiceAction.length > 0 ? '/' : '') +  logoutHttpServiceAction;
+				logoutHttpService.send();
+				
+				FlexGlobals.topLevelApplication.viewNavigator.popAll();
+				FlexGlobals.topLevelApplication.viewNavigator.pushView(CoreMobile.identificationView);
+			}
+			
+			public function backButton_clickHandler(event:MouseEvent):void
+			{
+				FlexGlobals.topLevelApplication.viewNavigator.popView();
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Button id="closeButton" visible="{closeButtonEnabled}" includeInLayout="{closeButtonEnabled}" icon="@Embed('file:////assets/icons/white/delete_48.png')" click="closeButton_clickHandler(event)"/>
+	<s:Button id="homeButton" visible="{homeButtonEnabled}" includeInLayout="{homeButtonEnabled}" icon="@Embed('file:////assets/icons/white/home_48.png')" click="homeButton_clickHandler(event)"/>
+	<s:Button id="logoutButton" visible="{logoutButtonEnabled}" includeInLayout="{logoutButtonEnabled}" icon="@Embed('file:////assets/icons/white/arrow_up_48.png')" click="logoutButton_clickHandler(event)"/>
+	<s:Button id="backButton" visible="{backButtonEnabled}" includeInLayout="{backButtonEnabled}" icon="@Embed('file:////assets/icons/white/arrow_left_48.png')" click="backButton_clickHandler(event)"/>
+</s:HGroup>

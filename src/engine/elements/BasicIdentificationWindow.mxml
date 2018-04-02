@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:components="engine.components.*"
+				   icon="key"
+				   label="identification"
+				   
+				   clearButtonEnabled="true"
+				   
+				   yesButtonEnabled="true"
+				   yesButtonTooltip="enter"
+				   
+				   clearOnDisable="false"
+				   
+				   doNotGroup="true"
+				   
+				   focusTarget="{emailTextInput}"
+				   createViewportButton="false"
+				   windowsStackEnabled="false"
+				   
+				   setHttpServiceController="identification"
+				   
+				   checkForOnline="false"
+				   
+				   closable="false"
+				   centered="true"
+				   
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Declarations>
+		<mx:EmailValidator id="emailValidator"
+						   source="{emailTextInput}"
+						   property="text"
+						   invalidCharError="{Core.translate.to(['invalids', 'characters'])}"
+						   invalidDomainError="{Core.translate.to(['specify_the', 'domain'])}"
+						   invalidPeriodsInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingAtSignError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingPeriodInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingUsernameError="{Core.translate.to(['filled', 'invalid'])}"
+						   tooManyAtSignsError="{Core.translate.to(['filled', 'invalid'])}"
+						   requiredFieldError="{Core.translate.to(['required', 'to_fill'])}"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import engine.core.Core;
+			
+			[Bindable]
+			public var barcodeButtonEnabled:Boolean;
+			[Bindable]
+			public var registerButtonEnabled:Boolean;
+			
+			override public function init():void
+			{
+				super.init();
+				
+				if (Core.firstIdentification && autoEnterCheckBox.selected)
+				{
+					yesFunction();
+				}
+			}
+			
+			override public function yesFunction():void
+			{
+				if (!emailTextInput.validation() || emailValidator.validate().type !== 'valid')
+				{
+					emailTextInput.setFocus();
+				}
+				else if (!passwordTextInput.validation())
+				{
+					passwordTextInput.setFocus();
+				}
+				else
+				{
+					requestParams = new Object();
+					requestParams.email = String(emailTextInput.text).toLocaleLowerCase();
+					requestParams.password = String(passwordTextInput.text).indexOf('taker') == -1 ? MD5.hash(passwordTextInput.text) : String(passwordTextInput.text).substring(5);
+					setHttpService.send(requestParams);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(setHttpService, label, true, false);
+				if (result == 0)
+				{
+					if (rememberMeCheckBox.selected)
+					{
+						Core.sharedObject.data.emailTextInput_text = emailTextInput.text;
+						Core.sharedObject.data.passwordTextInput_text = passwordTextInput.text;
+						
+						Core.sharedObject.data.rememberMeCheckBox_selected = rememberMeCheckBox.selected;
+						
+						Core.clearAllEvents();
+					}
+					else
+					{
+						clear();
+					}
+					
+					Core.firstIdentification = false;
+					
+					Core.data.refresh();
+					Core.removeWindow(this);
+					Core.identified = true;
+					Core.application.viewport.switchStartWindow();
+					
+					Core.sessionTimer.start();
+				}
+				else if (result == 1 || result == 3 || result == 4)
+				{
+					emailTextInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					callLater(emailTextInput.setFocus);
+				}
+				else if (result == 2)
+				{
+					passwordTextInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					callLater(passwordTextInput.setFocus);
+				}
+			}
+			
+			override public function clear():void
+			{
+				super.clear();
+				
+				Core.sharedObject.data.emailTextInput_text = '';
+				Core.sharedObject.data.passwordTextInput_text = '';
+				
+				Core.sharedObject.data.rememberMeCheckBox_selected = false;
+				Core.sharedObject.data.autoEnterCheckBox_selected = false;
+				
+				Core.saveSharedObject();
+			}
+			
+			public function registerFunction():void
+			{
+				Core.removeWindow(this);
+				Core.launcher.launch('RegistrationWindow');
+			}
+			
+			protected function autoEnterCheckBox_changeHandler(event:Event):void
+			{
+				Core.sharedObject.data.autoEnterCheckBox_selected = autoEnterCheckBox.selected;
+				Core.saveSharedObject();
+			}
+			
+			protected function barcodeButton_clickHandler(event:MouseEvent):void
+			{
+				Core.launcher.launch('BarcodeIdentificationWindow', null, this);
+			}
+			
+			protected function registerButton_clickHandler(event:MouseEvent):void
+			{
+				registerFunction();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<s:VGroup>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['email'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['password'])}:"/>
+							</s:VGroup>
+							
+							<s:VGroup width="100%" minWidth="{Core.size * 150}" gap="5">
+								<extended:TextInput id="emailTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{Core.sharedObject.data.emailTextInput_text}" validate="true" creationComplete="{event.target.setFocus()}"/>
+								<extended:TextInput id="passwordTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{Core.sharedObject.data.passwordTextInput_text}" validate="true" displayAsPassword="true"/>
+							</s:VGroup>
+						</s:HGroup>
+						
+						<extended:CheckBox id="rememberMeCheckBox" width="100%" height="{Core.size * Core.sizeMultiplier}" label="{Core.translate.to(['remember', 'me'])}" selected="{Core.sharedObject.data.rememberMeCheckBox_selected}"/>
+						<extended:CheckBox id="autoEnterCheckBox" width="100%" height="{Core.size * Core.sizeMultiplier}" label="{Core.translate.to(['auto', 'enter'])}" selected="{Core.sharedObject.data.autoEnterCheckBox_selected}" change="autoEnterCheckBox_changeHandler(event)"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>
+		</s:Group>
+	</components:content>
+	
+	<components:rightAddon>
+		<s:HGroup gap="-1">
+			<components:Button id="barcodeButton" paddingWidth="5" visible="{barcodeButtonEnabled}" includeInLayout="{barcodeButtonEnabled}" label="{Core.translate.to(['barcode'])}" backgroundAlpha="{selected ? 1 : 0}" color="{Core.orange}" labelColor="{selected ? Core.white : Core.black}" overColor="{Core.lightOrange}" downColor="{Core.darkOrange}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="credit_card" click="barcodeButton_clickHandler(event)"/>
+			<components:Button id="registerButton" paddingWidth="5" visible="{registerButtonEnabled}" includeInLayout="{registerButtonEnabled}" label="{Core.translate.to(['registration'])}" backgroundAlpha="{selected ? 1 : 0}" color="{Core.orange}" labelColor="{selected ? Core.white : Core.black}" overColor="{Core.lightOrange}" downColor="{Core.darkOrange}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="plus" click="registerButton_clickHandler(event)"/>
+		</s:HGroup>  
+	</components:rightAddon>
+</components:Window>

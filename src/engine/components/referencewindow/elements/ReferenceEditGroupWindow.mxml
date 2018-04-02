@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{getLabel(action, mode) + ' of_group'}"
+				   
+				   yesButtonEnabled="{textInput.text.length > 0}"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="true"
+				   
+				   focusTarget="{textInput}"
+				   
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.events.TextOperationEvent;
+			
+			import engine.components.referencewindow.ReferenceWindow;
+			import engine.core.Core;
+			import engine.storages.DataStorage;
+			
+			public var groupsDataStorage:DataStorage;
+			
+			override public function yesFunction():void
+			{
+				if (action == 'adding')
+				{
+					Core.dispatchAllComponents(this);
+				}
+				
+				if (Core.getObjectLength(requestParams) > 0) 
+				{
+					requestParams.item_id = data ? data['@item_id'] : null;
+					setHttpService.send(requestParams);
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (!(parentWindow is ReferenceWindow))
+					{
+						parentWindow.changeValue('group_id', setHttpService.lastResult.item.@item_id, true, false, true);
+						
+						if (groupsDataStorage)
+						{
+							groupsDataStorage.refresh();
+						}
+					}
+					else
+					{
+						if (action == 'adding')
+						{
+							parentWindow['groupsDataGridSet'].isNewRecord = true;
+						}
+						
+						parentWindow.reloadFunction();
+					}
+					
+					Core.removeWindow(this);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:HGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['name'])}:" verticalAlign="middle"/>
+						<extended:TextInput id="textInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'name')}" change="{changeValue('name', event.target.text, action == 'adding')}" creationComplete="{event.target.setFocus()}"/>
+					</s:HGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

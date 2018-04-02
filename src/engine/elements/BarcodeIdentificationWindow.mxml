@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:components="engine.components.*"
+				   icon="credit_card"
+				   label="barcode - identification"
+				   
+				   clearButtonEnabled="true"
+				   
+				   yesButtonEnabled="{textInput.text.length > 0}"
+				   yesButtonTooltip="enter"
+				   
+				   doNotGroup="true"
+				   
+				   focusTarget="{textInput}"
+				   createViewportButton="false"
+				   windowsStackEnabled="false"
+				   
+				   setHttpServiceController="identification"
+				   
+				   checkForOnline="false"
+				   
+				   closable="true"
+				   centered="true"
+				   
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			override public function init():void
+			{
+				super.init();
+				
+				parentWindow.minimized = true;
+			}
+			
+			override public function yesFunction():void
+			{
+				requestParams = new Object();
+				requestParams.barcode = textInput.text;
+				setHttpService.send(requestParams);
+			}
+			
+			override public function noFunction():void
+			{
+				parentWindow.minimized = false;
+				
+				removeWindow();
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(setHttpService, label, true, false);
+				if (result == 0)
+				{
+					Core.firstIdentification = false;
+					
+					Core.data.refresh();
+					Core.removeWindow(parentWindow);
+					Core.identified = true;
+					Core.application.viewport.switchStartWindow();
+					
+					Core.sessionTimer.start();
+				}
+				else if (result == 1)
+				{
+					textInput.text = '';
+					textInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					textInput.setFocus();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<extended:TextInput id="textInput" width="250" height="{Core.size * Core.sizeMultiplier}" displayAsPassword="true" maxChars="32" creationComplete="{event.target.setFocus()}"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>
+		</s:Group>
+	</components:content>
+</components:Window>

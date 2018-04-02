@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="tag"
+				   label="hyperlink"
+				   
+				   yesButtonEnabled="{textInput.text.length > 0}"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   focusTarget="{textInput}"
+				   
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import engine.core.Core;
+			
+			override public function init():void
+			{
+				super.init();
+				textInput.text = '_server_url_/';
+			}
+			
+			override public function yesFunction():void
+			{
+				parentWindow['textEditor']['applyTag'](data.textBefore, "<img src='" + textInput.text + "' align='" + targetDropDownList.selectedItem.label + "'/>", data.text, '', data.textAfter);
+				Core.removeWindow(this);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:HGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<extended:TextInput id="textInput" width="200" height="{Core.size * Core.sizeMultiplier}" creationComplete="{event.target.setFocus()}"/>
+						
+						<extended:DropDownList id="targetDropDownList" width="80" height="{Core.size * Core.sizeMultiplier}" cornerRadius="0" selectedIndex="0">
+							<extended:dataProvider>
+								<mx:ArrayCollection>
+									<fx:Object label="left"/>
+									<fx:Object label="middle"/>
+									<fx:Object label="right"/>
+								</mx:ArrayCollection>
+							</extended:dataProvider>
+						</extended:DropDownList>
+					</s:HGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+</components:Window>

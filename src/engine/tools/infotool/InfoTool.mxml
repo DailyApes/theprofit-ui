@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 x="{Core.application.width - (display ? width : 5)}"
+		 y="{Core.size * Core.sizeMultiplier * 3}"
+		 height="{Core.application.height - y * 2}"
+		 mouseDownOutside="mouseDownOutsideHandler(event)"
+		 xmlns:components="engine.components.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexMouseEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.collections.SortField;
+			
+			import engine.core.Core;
+			
+			private var _display:Boolean;
+			
+			[Bindable]
+			public var dataProvider:Object;
+			
+			[Bindable]
+			public function set display(value:Boolean):void
+			{
+				_display = value;
+				
+				if (display)
+				{
+					refresh();
+					
+					dataGridSet.dataGrid.selectedIndex = 0;
+					dataGridSet.dataGrid.scrollToIndex(dataGridSet.dataGrid.selectedIndex);
+				}
+			}
+			
+			public function get display():Boolean
+			{
+				return _display;
+			}
+			
+			protected function button_clickHandler(event:MouseEvent):void
+			{
+				display = !display;
+			}
+			
+			public function init():void
+			{
+				PopUpManager.addPopUp(this, Core.application as DisplayObject);
+			}
+			
+			protected function mouseDownOutsideHandler(event:FlexMouseEvent):void
+			{
+				hide();
+			}
+			
+			public function show():void
+			{
+				display = true;
+			}
+			
+			public function hide():void
+			{
+				display = false;
+			}
+			
+			public function refresh():void
+			{
+				Core.translate.columns(dataGridSet.dataProvider, '@message');
+				dataGridSet.refresh();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:Button id="button" width="100%" height="100%" paddingWidth="5" backgroundAlpha="1" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="white" icon="info" labelColor="{Core.white}" label="{Core.translate.to(['events'])}" click="button_clickHandler(event)"/>
+	
+	<components:DataGridSet id="dataGridSet"
+							width="100%"
+							height="100%"
+							selectedIndex="0"
+							left="5" right="5" top="{Core.size * Core.sizeMultiplier + 4}" bottom="5"
+							dataProvider="{Core.eventsXmlListCollection.source}"
+							
+							sortFields="{[new SortField('@time_numeric', true)]}">
+		<components:columns>
+			<mx:AdvancedDataGridColumn width="70" dataField="@time" headerText="{Core.translate.to(['time'])}" itemRenderer="engine.tools.infotool.itemrenderrers.ErrorAdvancedDataGridItemRenderer"/>
+			<mx:AdvancedDataGridColumn dataField="@message" headerText="{Core.translate.to(['message'])}"/>
+		</components:columns>
+	</components:DataGridSet>
+	
+	<components:Shadow/>
+</s:Group>

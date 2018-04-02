@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   label="{Core.translate.to(['confirm'])}?"
+				   icon="help"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   cancelButtonEnabled="true"
+				   windowsStackEnabled="false"
+				   
+				   isPopupWindow="true"
+				   resizable="false"
+				   
+				   centered="true"
+				   
+				   xmlns:components="engine.components.*" xmlns:window="engine.components.window.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			public var onYesFunction:Function;
+			public var onYesFunctionParameters:Array;
+			
+			public var onNoFunction:Function;
+			public var onNoFunctionParameters:Array;
+			
+			public var onCancelFunction:Function;
+			public var onCancelFunctionParameters:Array;
+			
+			override public function disable():void
+			{
+				super.disable();
+				
+				onYesFunction = null;
+				onYesFunctionParameters = null;
+				
+				onNoFunction = null;
+				onNoFunctionParameters = null;
+				
+				onCancelFunction = null;
+				onCancelFunctionParameters = null;
+			}
+			
+			override public function yesFunction():void
+			{
+				if (Boolean(onYesFunction))
+				{
+					onYesFunction.apply(null, onYesFunctionParameters);
+				}
+			}
+			
+			override public function noFunction():void
+			{
+				if (Boolean(onNoFunction))
+				{
+					onNoFunction.apply(null, onNoFunctionParameters);
+				}
+				
+				super.noFunction();
+			}
+			
+			override public function cancelFunction():void
+			{
+				if (Boolean(onCancelFunction))
+				{
+					onCancelFunction.apply(null, onCancelFunctionParameters);
+				}
+				
+				super.cancelFunction();
+			}
+		]]>
+	</fx:Script>
+
+	
+	<components:content>
+		<s:Group>
+			<components:FieldSet top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<mx:Text width="300" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" text="{Core.translate.to(['default_confirm_text'])}"/>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+</components:Window>

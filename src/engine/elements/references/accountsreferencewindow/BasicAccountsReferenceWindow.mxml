@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="man"
+				   label="accounts"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   autoreloadEnabled="true"
+				   
+				   getHttpServiceController="accounts"
+				   
+				   setHttpServiceController="accounts"
+				   setHttpServiceAction="delete"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   menu="{new ArrayCollection()}"
+				   
+				   autoreloadrRun="{numChildrenWindows == 0}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.net.navigateToURL;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.ScrollPolicy;
+			import mx.utils.ObjectUtil;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			[Bindable]
+			public var displayVk:Boolean;
+			[Bindable]
+			public var displayVerified:Boolean;
+			[Bindable]
+			public var displayBalance:Boolean;
+			
+			public function addFunction():void
+			{
+				var window:Window = Core.launcher.launch('AccountsReferenceEditWindow', null, this, ['adding']);
+				window.changeValue('note', '', true, false, true);
+			}
+			
+			public function editFunction():void
+			{
+				Core.launcher.launch('AccountsReferenceEditWindow', dataGridSet.dataGrid.selectedItem, this, ['editing']);
+			}
+			
+			public function copyFunction():void
+			{
+				var selectedItem:Object = ObjectUtil.clone(dataGridSet.dataGrid.selectedItem);
+				selectedItem.@item_id = null;
+				var window:Window = Core.launcher.launch('AccountsReferenceEditWindow', selectedItem, this, ['adding']);
+			}
+			
+			public function deleteFunction():void
+			{
+				var window:Window = Core.launcher.launch('ConfirmWindow');
+				window.parentWindow = this;
+				
+				window['onYesFunction'] = function():void
+				{
+					requestParams = new Object();
+					
+					var array:Array = new Array();
+					for (var i:int = 0; i < dataGridSet.dataGrid.selectedItems.length; i++) 
+					{
+						array.push(dataGridSet.dataGrid.selectedItems[i]['@item_id']);
+					}
+					
+					requestParams.item_id = array.toString();
+					setHttpService.send(requestParams);
+					
+					Core.removeWindow(window);
+				};
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				requestParams = new Object();
+				reloadFunction();
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				if (dataGridSet.dataProvider)
+				{
+					for (var i:int = 0; i < dataGridSet.dataProvider.length(); i++)
+					{
+						dataGridSet.dataProvider[i].@fio = (dataGridSet.dataProvider[i].@last_name ? dataGridSet.dataProvider[i].@last_name + ' ' : '') + (dataGridSet.dataProvider[i].@first_name ? dataGridSet.dataProvider[i].@first_name + ' ' : '') + (dataGridSet.dataProvider[i].@patronymic ? dataGridSet.dataProvider[i].@patronymic + ' ' : '');
+					}					
+				}
+			}
+			
+			override public function reloadFunction():void
+			{
+				requestParams = new Object();
+				
+				if (dateSelector.initialised)
+				{
+					if (dateSelector.fromDate || dateSelector.toDate)
+					{
+						requestParams.param = creationRadioButton.selected ? 'creation' : 'activity';
+					}
+					
+					requestParams.from_date = dateSelector.fromDate ? Core.dateConvert(dateSelector.fromDate) : null;
+					requestParams.to_date = dateSelector.toDate ? Core.dateConvert(new Date(dateSelector.toDate.time + (24 * 60 * 60 * 1000 - 1))) : null;
+					
+					super.reloadFunction();
+				}
+			}
+			
+			protected function openVkButton_clickHandler(event:MouseEvent):void
+			{
+				var urlRequest:URLRequest = new URLRequest();
+				urlRequest.url = 'https://vk.com/id' + dataGridSet.dataGrid.selectedItem['@vk_id'];
+				navigateToURL(urlRequest, '_blank');
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:VGroup id="filtersGroup" width="200" height="100%" gap="5">
+				<components:DateSelector id="dateSelector" action="allTime" hoursEnabled="true" change="{reloadFunction()}">
+					<components:bottomAddon>
+						<s:VGroup width="100%" gap="-5" paddingLeft="5" paddingRight="5">
+							<s:RadioButton id="creationRadioButton" height="{Core.size * Core.sizeMultiplier}" groupName="creationActivityRadioButtonGroup" selected="true" label="{Core.translate.to(['date', 'of_creation'])}" change="{callLater(reloadFunction)}"/>
+							<s:RadioButton height="{Core.size * Core.sizeMultiplier}" groupName="creationActivityRadioButtonGroup" label="{Core.translate.to(['she_last', 'activity'])}" change="{callLater(reloadFunction)}"/>
+						</s:VGroup>  
+					</components:bottomAddon>
+				</components:DateSelector>
+				
+				<components:SelectableList id="activesSelectableList" width="100%" orientation="columns" requestedColumnCount="2" selected="true" label="actives" column="@active" dataProvider="{Core.toArrayList(Core.data.yesNo.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+				<components:SelectableList id="adminsSelectableList" width="100%" orientation="columns" requestedColumnCount="2" selected="true" label="admins" column="@admin" dataProvider="{Core.toArrayList(Core.data.yesNo.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+				<components:SelectableList id="onlineSelectableList" width="100%" orientation="columns" requestedColumnCount="2" selected="true" label="online" column="@session_id" dataProvider="{Core.toArrayList(Core.data.yesNo.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+				<components:SelectableList id="verifiedSelectableList" width="100%" orientation="columns" requestedColumnCount="2" selected="true" label="verifieds" column="@verified" dataProvider="{Core.toArrayList(Core.data.yesNo.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+				
+				<components:FieldSet width="100%" height="100%"/>
+			</s:VGroup>
+			
+			<components:DataGridSet id="dataGridSet"
+									left="5" right="5" top="5" bottom="5"
+									width="100%"
+									height="100%"
+									
+									yesNoColumns="@active,@admin,@verified"
+									translateColumns="@active,@admin,@verified"
+									numericFields="@balance, @limit, @bonuses"
+									
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{dataStorage ? dataStorage.dataProvider : getHttpService.lastResult.item}"
+									selectionMode="multipleRows"
+									
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{numChildrenWindows == 0}"
+									
+									filterFunctionsArray="{[activesSelectableList.filterFunction, adminsSelectableList.filterFunction, onlineSelectableList.filterFunction, verifiedSelectableList.filterFunction]}"
+									clearFunctionsArray="{[activesSelectableList.clear, adminsSelectableList.clear, onlineSelectableList.clear, verifiedSelectableList.clear]}"
+									
+									addFunction="{addFunction}"
+									editFunction="{editFunction}"
+									copyFunction="{copyFunction}"
+									reloadFunction="{reloadFunction}"
+									deleteFunction="{deleteFunction}">
+				
+				<components:bottomAddon>
+					<s:VGroup width="100%" gap="-1">
+						<s:VGroup width="100%" gap="-1" visible="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@vk_id') > 0}" includeInLayout="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@vk_id') > 0}">
+							<components:Button id="openVkButton" width="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" label="VK" click="openVkButton_clickHandler(event)"/>
+							<components:Splitter width="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+						</s:VGroup>
+						<components:Button backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="contrast" toolTip="{Core.translate.to(['display', 'filters'])}" click="{filtersGroup.visible = !filtersGroup.visible; filtersGroup.includeInLayout = !filtersGroup.includeInLayout; callLater(checkSize)}"/>						
+					</s:VGroup>
+				</components:bottomAddon>
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['id'])}" dataField="@item_id"/>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['he_active'])}" dataField="@active" textAlign="center" itemRenderer="engine.itemrenderrers.YesNoAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['progects.admin.admin'])}" dataField="@admin" textAlign="center" itemRenderer="engine.itemrenderrers.YesNoAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['online'])}" dataField="@session_id" textAlign="center" itemRenderer="engine.itemrenderrers.YesNoAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['email'])}" dataField="@email" fontWeight="bold" color="{Core.darkBlue}"/>
+					<mx:AdvancedDataGridColumn width="80" headerText="{Core.translate.to(['vk'])}" dataField="@vk_id" visible="{displayVk}"/>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['he_verified'])}" dataField="@verified" textAlign="center" itemRenderer="engine.itemrenderrers.YesNoAdvancedDataGridItemRenderer" visible="{displayVerified}"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['full_name'])}" dataField="@fio"/>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['balance'])}" dataField="@balance" textAlign="right" visible="{displayBalance}"/>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date', 'of_creation'])}" dataField="@creation_date"/>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['she_last', 'activity'])}" dataField="@last_activity"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['note'])}" dataField="@note"/>
+				</components:columns>
+			</components:DataGridSet>
+		</s:HGroup>
+	</components:content>
+</components:Window>
+

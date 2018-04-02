@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="credit_card"
+				   label="payments_history"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   menu="{new ArrayCollection()}"
+				   refreshArray="{[Core.data.modules]}"
+				   
+				   autoreloadEnabled="true"
+				   
+				   getHttpServiceController="modulespaymentshistory"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			import spark.collections.SortField;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			import flashx.textLayout.container.ScrollPolicy;
+			
+			override public function getHttpService_resultFunction():void
+			{
+				if (dataGridSet.dataProvider)
+				{
+					for (var i:int = 0; i < dataGridSet.dataProvider.length(); i++)
+					{
+						dataGridSet.dataProvider[i].@module = Core.getItemValue(Core.data.modules.dataProvider, '@item_id', dataGridSet.dataProvider[i].@module_id, '@name');
+					}					
+				}
+				Core.translate.columns(dataGridSet.dataProvider, '@module');
+				
+				modulesSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+			}
+			
+			override public function reloadFunction():void
+			{
+				if (dateSelector.initialised)
+				{
+					requestParams.from_date = dateSelector.fromDate ? Core.dateConvert(dateSelector.fromDate) : null;
+					requestParams.to_date = dateSelector.toDate ? Core.dateConvert(new Date(dateSelector.toDate.time + (24 * 60 * 60 * 1000 - 1))) : null;
+					super.reloadFunction();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:VGroup id="filtersGroup" width="200" height="100%" gap="5">
+				<components:DateSelector id="dateSelector" action="allTime" hoursEnabled="true" change="{reloadFunction()}"/>
+				<components:SelectableList id="modulesSelectableList" width="100%" radioButtonsEnabled="true" height="100%" selected="true" matter="modules" column="@module_id" labelField="@name" dataProvider="{Core.toArrayList(Core.data.modules.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+			</s:VGroup>
+			
+			<components:DataGridSet id="dataGridSet"
+									left="5" right="5" top="5" bottom="5"
+									width="100%"
+									height="100%"
+									
+									sortFields="{[new SortField('@date', true, false)]}"
+									
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{getHttpService.lastResult.item}"
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{!inProgress}"
+									
+									filterFunctionsArray="{[modulesSelectableList.filterFunction]}"
+									clearFunctionsArray="{[modulesSelectableList.clear]}"
+									
+									reloadFunction="{reloadFunction}">
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date'])}" dataField="@date" itemRenderer="engine.itemrenderrers.TimestampAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['module'])}" dataField="@module"/>
+					<mx:AdvancedDataGridColumn width="120" headerText="{Core.translate.to(['ip'])}" dataField="@ip"/>
+					<mx:AdvancedDataGridColumn width="80" headerText="{Core.translate.to(['sum'])}" dataField="@amount"/>
+					<mx:AdvancedDataGridColumn width="80" headerText="{Core.translate.to(['quantity of_days'])}" dataField="@days_count"/>
+					<mx:AdvancedDataGridColumn headerText="{Core.translate.to(['note'])}" dataField="@note"/>
+				</components:columns>
+			</components:DataGridSet>
+		</s:HGroup>
+	</components:content>
+</components:Window>

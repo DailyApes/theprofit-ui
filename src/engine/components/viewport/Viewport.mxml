@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  mouseUp="mouseUpHandler(event)"
+		  width="{parentDocument.width}"
+		  height="{parentDocument.height}"
+		  resize="resizeHandler(event)"
+		  creationComplete="creationCompleteHandler(event)"
+		  keyDown="keyDownHandler(event)"
+		  xmlns:components="engine.components.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.ResizeEvent;
+			
+			import engine.components.Window;
+			import engine.components.viewport.components.ViewportButton;
+			import engine.core.Core;
+			import engine.elements.startwindow.StartWindow;
+		
+			[Event(name="change", type="mx.events.ListEvent")]
+			
+			private var _grouped:Boolean;
+			private var _maximized:Boolean = false;
+			
+			[Bindable]
+			public var lastSelectedWindow:Window;
+			
+			[Bindable]
+			public var imageSource:String = '';
+			[Bindable]
+			public var imageAlpha:Number = 0.2;
+			
+			public function refresh():void
+			{
+				buttonsGroup.removeAllElements();
+				
+				for (var i:int = 0; i < Core.windowsСache.length; i++) 
+				{
+					if (Core.windowsСache[i].parent)
+					{
+						if (Core.windowsСache[i].createViewportButton)
+						{
+							buttonsGroup.addElement(Core.createComponent(ViewportButton))['init'](Core.windowsСache[i]);
+						}
+					}
+				}
+				
+				popUpWindowsGroupHolder.visible = popUpWindowsGroup.numElements > 0;
+			}
+			
+			protected function startButton_clickHandler(event:MouseEvent):void
+			{
+				switchStartWindow();				
+			}
+			
+			protected function mouseUpHandler(event:MouseEvent):void
+			{
+				stopDrag();
+			}
+			
+			protected function sizeButton_clickHandler(event:MouseEvent):void
+			{
+				Core.size == 1 ? Core.size = 2 : Core.size = 1;
+				
+				/*if (grouped)
+				{
+					grouped = false;
+					Core.callAfter(regroupButton_clickHandler, Core.findFrontedResizableWindows().length * 200, [null]);
+				}*/
+				
+				Core.callAfter(Core.application.dispatchEvent, 100, [new ResizeEvent('resize')]);
+			}
+			
+			protected function hideAllWindowsButton_mouseOverHandler(event:MouseEvent):void
+			{
+				for (var i:int = 0; i < Core.windowsСache.length; i++) 
+				{
+					if (Core.windowsСache[i].parent)
+					{
+						Core.windowsСache[i].background.alpha = 0.5;
+						Core.windowsСache[i].content.alpha = 0.5;
+					}
+				}
+			}
+			
+			protected function hideAllWindowsButton_mouseOutHandler(event:MouseEvent):void
+			{
+				for (var i:int = 0; i < Core.windowsСache.length; i++) 
+				{
+					if (Core.windowsСache[i].background.alpha !== 1)
+					{
+						Core.windowsСache[i].background.alpha = 1;
+						Core.windowsСache[i].content.alpha = 1;
+					}
+				}
+			}
+			
+			protected function hideAllWindowsButton_clickHandler(event:MouseEvent):void
+			{
+				var windowsArray:Array = Core.findFrontedResizableWindows();
+				
+				if (windowsArray.length > 0)
+				{
+					lastSelectedWindow = Core.selectedWindow;
+						
+					for (var i:int = 0; i < windowsArray.length; i++) 
+					{
+						windowsArray[i].minimized = true;
+					}
+					
+					Core.application.viewport.setFocus();
+				}
+				else
+				{
+					for (i = 0; i < Core.windowsСache.length; i++) 
+					{
+						if (Core.windowsСache[i].parent && Core.getClass(Core.windowsСache[i]) !== StartWindow)
+						{
+							Core.windowsСache[i].minimized = false;							
+						}
+					}
+					
+					if (grouped)
+					{
+						regroup();
+					}
+					
+					Core.selectWindow(lastSelectedWindow);
+				}
+			}
+			
+			protected function regroupButton_clickHandler(event:MouseEvent):void
+			{
+				grouped = !grouped;
+			}
+			
+			public function regroup():void
+			{
+				if (grouped)
+				{
+					maximized = false;
+					
+					var array:Array = Core.findFrontedResizableWindows();
+					var windowsArray:Array = new Array();
+					
+					for (var j:int = 0; j < array.length; j++) 
+					{
+						if (!array[j].doNotGroup)
+						{
+							windowsArray.push(array[j]);
+						}
+					}
+					
+					Core.callAfter(function():void
+					{
+						var columnsCount:Number = Math.ceil(windowsArray.length / 2) > 0 ? 2 : 1;
+						var rowsCount:Number = Math.ceil(windowsArray.length / 2);
+						
+						var windowsGroupWidth:Number = width;
+						var windowsGroupHeight:Number = height - (taskbarGroup.height);
+						
+						if (windowsArray.length > 0)
+						{
+							for (var i:int = 0; i < windowsArray.length; i++) 
+							{
+								windowsArray[i].horizontalCenter = NaN;
+								windowsArray[i].verticalCenter = NaN;
+								
+								trace('regroup', isNaN(windowsArray[i].backupX), windowsArray[i].backupY);
+								
+								if (isNaN(windowsArray[i].backupX))
+								{
+									windowsArray[i].backupX = windowsArray[i].x;									
+								}
+								
+								if (isNaN(windowsArray[i].backupY))
+								{
+									windowsArray[i].backupY = windowsArray[i].y;									
+								}
+								
+								if(i%2 == 0)
+								{
+									windowsArray[i].left = 0;
+									windowsArray[i].right = windowsGroupWidth - windowsGroupWidth / 2;
+									windowsArray[i].top = (i / 2) * (windowsGroupHeight / rowsCount);
+									windowsArray[i].bottom = windowsGroupHeight - ((i / 2) + 1) *(windowsGroupHeight / rowsCount);
+									
+									if (i == windowsArray.length - 1)
+									{
+										windowsArray[i].right = 0;
+									}
+								}
+								else
+								{
+									windowsArray[i].left = windowsGroupWidth - windowsGroupWidth / columnsCount - 1;
+									windowsArray[i].right = 0;
+									windowsArray[i].top = ((i - 1) / 2) * (windowsGroupHeight / rowsCount);
+									windowsArray[i].bottom = windowsGroupHeight - (((i - 1) / 2) + 1) *(windowsGroupHeight / rowsCount);
+								}
+							}
+						}
+					}, 100);
+				}
+			}
+			
+			protected function popUpWindowsGroupBackground_doubleClickHandler(event:MouseEvent):void
+			{
+				Core.removeWindow(Core.selectedWindow);
+			}
+			
+			
+			public function switchStartWindow():void
+			{
+				var window:Window = Core.findWindow(StartWindow);
+				if (window)
+				{
+					if (window.minimized)
+					{
+						Core.launcher.launch('StartWindow');
+					}
+					else
+					{
+						window.minimized = true;
+					}
+				}
+				else
+				{
+					Core.launcher.launch('StartWindow');
+				}
+			}
+			
+			protected function resizeHandler(event:ResizeEvent):void
+			{
+				regroup();
+			}
+			
+			protected function maximizeButton_clickHandler(event:MouseEvent):void
+			{
+				maximized = !maximized;
+			}
+			
+			protected function fullScreenButton_clickHandler(event:MouseEvent):void
+			{
+				if (true /*!Core.api*/)
+				{
+					if (stage.displayState == StageDisplayState.NORMAL)
+					{
+						try
+						{
+							//stage.displayState = StageDisplayState.FULL_SCREEN;
+							stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+						} 
+						catch(error:Error) 
+						{
+							
+						}
+					}
+					else
+					{
+						try
+						{
+							stage.displayState = StageDisplayState.NORMAL;
+								
+						} 
+						catch(error:Error) 
+						{
+							
+						}
+					}
+				}
+				else
+				{
+					Core.callAfter(function():void
+					{
+						Core.launcher.launch('ResolutionWindow', null, null);
+					}, 100);
+				}
+			}
+			
+			[Bindable]
+			public function set grouped(value:Boolean):void
+			{
+				_grouped = value;
+				
+				if (grouped)
+				{
+					regroup();
+				}
+				else
+				{
+					var array:Array = Core.findFrontedResizableWindows();
+					var windowsArray:Array = new Array();
+					
+					for (var j:int = 0; j < array.length; j++) 
+					{
+						if (!array[j].doNotGroup)
+						{
+							windowsArray.push(array[j]);
+						}
+					}
+					
+					for (var i:int = 0; i < windowsArray.length; i++) 
+					{
+						windowsArray[i].left = NaN;
+						windowsArray[i].right = NaN;
+						windowsArray[i].top = NaN;
+						windowsArray[i].bottom = NaN;
+						
+						/*callLater(function():void
+						{
+							if (!maximized)
+							{*/
+								windowsArray[i].move(windowsArray[i].backupX, windowsArray[i].backupY);								
+						/*	}
+						});*/
+					}
+				}
+			}
+			
+			public function get grouped():Boolean
+			{
+				return _grouped;
+			}
+			
+			[Bindable]
+			public function set maximized(value:Boolean):void
+			{
+				_maximized = value;
+				
+				if (maximized)
+				{
+					grouped = false;
+				}
+				
+				var windowsArray:Array = Core.findFrontedMaximizableWindows();
+				
+				for (var i:int = 0; i < windowsArray.length; i++) 
+				{
+					if (maximized)
+					{
+						windowsArray[i].maximized = true;
+					}
+					else
+					{
+						windowsArray[i].maximized = false;
+					}
+				}	
+			}
+			
+			public function get maximized():Boolean
+			{
+				return _maximized;
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				if (FlexGlobals.topLevelApplication.width < 1600 || FlexGlobals.topLevelApplication.height < 800)
+				{
+					maximized = true;
+				}
+			}
+			
+			override protected function keyDownHandler(event:KeyboardEvent):void
+			{
+				trace(event.keyCode);
+				super.keyDownHandler(event);
+				
+				var windows:Array = Core.findDockedWindows();
+				
+				if (windows.length > 0)
+				{
+					var index:Number;
+					
+					switch(event.keyCode)
+					{
+						case 9:
+						{
+							if (event.ctrlKey)
+							{
+								index = windows.indexOf(Core.selectedWindow) + 1;
+								
+								if (index <= windows.length - 1)
+								{
+									Core.selectWindow(windows[index]);
+								}
+								else
+								{
+									Core.selectWindow(windows[0]);
+								}
+							}
+							break;
+						}
+							
+						case 192:
+						{
+							if (event.ctrlKey)
+							{
+								hideAllWindowsButton_clickHandler(null);
+							}
+							break;
+						}
+					}
+				}
+			}
+			
+			protected function supportUsButton_clickHandler(event:MouseEvent):void
+			{
+				Core.launcher.launch('SupportUsWindow');
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:Button id="spikeButton" width="0" height="0" alpha="0"/>
+	
+	<s:Image id="image" source="{imageSource}" alpha="{imageAlpha}" horizontalCenter="0" verticalCenter="0" complete="{Core.versionEnabled ? versionLabel.visible = true : versionLabel.visible = false}"/>
+	
+	<s:Label id="versionLabel" visible="false" x="{image.x + image.width - versionLabel.width}" y="{image.y + image.height}" alpha="0.3" text="v.{Core.version} {Core.translate.to(['from'])} {Core.build}"/>
+
+	<!--<s:Label id="balanceLabel" right="5" bottom="{taskbarGroup.height + 5}" alpha="0.3" visible="{Core.identified &amp;&amp; Core.api}" text="{Core.translate.to(['he_current balance'])} {Core.getItem(Core.accountData, '@balance')}"/>-->
+	
+	<s:Group id="windowsGroup" maxWidth="{width}" maxHeight="{height - (taskbarGroup.height) + 1}" left="0" right="0" top="0" bottom="{taskbarGroup.height - 1}"/>
+	
+	
+	<s:Group width="100%" bottom="0">
+		<components:Background fillColor="{Core.blue}" fillAlpha="0.75"/>
+		<components:Border/>
+		<components:Shadow/>
+		
+		<s:HGroup width="100%" id="taskbarGroup" gap="-1">
+			<components:Button id="startButton" visible="{Core.identified}" includeInLayout="{Core.identified}" paddingWidth="5" label="start" backgroundAlpha="1" labelColor="{Core.white}" overLabelColor="{Core.white}" downLabelColor="{Core.white}" color="{Core.green}" overColor="{Core.lightGreen}" downColor="{Core.darkGreen}" defaultIconColor="white" icon="app" click="startButton_clickHandler(event)"/>
+			<s:HGroup id="buttonsGroup" width="100%" gap="-1"/>
+			<components:Button id="supportUsButton" paddingWidth="5" visible="{Core.api}" includeInLayout="{Core.api}" backgroundAlpha="1" color="{Core.orange}" overColor="{Core.lightOrange}" downColor="{Core.darkOrange}" defaultIconColor="white" labelColor="{Core.white}" label="support_us" icon="smile" click="supportUsButton_clickHandler(event)"/>
+			
+			<components:Button id="sizeButton" visible="false" includeInLayout="false" label="size" backgroundAlpha="1" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="white" icon="{Core.size == 1 ? 'font_up' : 'font_down'}" click="sizeButton_clickHandler(event)"/>
+			<components:Button id="fullScreenButton" backgroundAlpha="1" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="white" icon="display_off" click="fullScreenButton_clickHandler(event)"/>
+			<components:Button id="regroupButton" backgroundAlpha="1" selected="{grouped}" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="white" icon="lock" click="regroupButton_clickHandler(event)"/>
+			<components:Button id="maximizeButton" backgroundAlpha="1" selected="{maximized}" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="white" icon="resize" click="maximizeButton_clickHandler(event)"/>
+			<components:Button id="hideAllWindowsButton" width="{Core.size * 10}" height="100%" backgroundAlpha="1" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" mouseOver="hideAllWindowsButton_mouseOverHandler(event)" mouseOut="hideAllWindowsButton_mouseOutHandler(event)" click="hideAllWindowsButton_clickHandler(event)"/>
+		</s:HGroup>
+	</s:Group>
+	
+	<s:Group id="popUpWindowsGroupHolder" width="100%" height="100%" visible="false">
+		<components:Background id="popUpWindowsGroupBackground" fillColor="{Core.gray}" fillAlpha="0.5" doubleClickEnabled="true" doubleClick="popUpWindowsGroupBackground_doubleClickHandler(event)"/>
+		<s:Group id="popUpWindowsGroup" maxWidth="{width}" maxHeight="{height}" left="0" right="0" top="0" bottom="0"/>
+	</s:Group>
+	
+</s:Group>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="note"
+				   label="sticky_notes"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   menu="{new ArrayCollection()}"
+				   
+				   autoreloadEnabled="true"
+				   
+				   getHttpServiceController="stickynotes"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			import spark.collections.SortField;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			public function addFunction():void
+			{
+				
+			}
+			
+			public function editFunction():void
+			{
+				
+			}
+			
+			public function deleteFunction():void
+			{
+				
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				reloadFunction();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<components:DataGridSet id="dataGridSet"
+									height="100%"
+									
+									dataProvider="{getHttpService.lastResult.item}"
+									
+									sortFields="{[new SortField('@creation_date', true)]}"
+									
+									addFunction="{addFunction}"
+									editFunction="{editFunction}"
+									reloadFunction="{reloadFunction}"
+									deleteFunction="{deleteFunction}">
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date', 'of_creation'])}" dataField="@creation_date"/>
+					<mx:AdvancedDataGridColumn headerText="{Core.translate.to(['header'])}" dataField="@header"/>
+				</components:columns>
+			</components:DataGridSet>
+			
+			<components:FieldSet width="100%" height="100%">
+				
+			</components:FieldSet>			
+		</s:HGroup>
+	</components:content>
+</components:Window>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<referencewindow:ReferenceWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+							xmlns:s="library://ns.adobe.com/flex/spark" 
+							xmlns:mx="library://ns.adobe.com/flex/mx"
+							xmlns:components="engine.components.*"
+							
+							yesButtonEnabled="{parentWindow is HAEditWindow}"
+							
+							label="home_accounting - wallets"
+							
+							getGroupsHttpServiceController="hawalletsgroups"
+							
+							setGroupsHttpServiceController="hawalletsgroups"
+							setGroupsHttpServiceAction="delete"
+							
+							getHttpServiceController="hawallets"
+							
+							setHttpServiceController="hawallets"
+							setHttpServiceAction="delete"
+							
+							menu="{new ArrayCollection()}"
+							
+							refreshArray="{[Core.data.haWallets, Core.data.haWalletsGroups]}"
+							
+							editGroupWindowName="HAWalletsReferenceEditGroupWindow"
+							editWindowName="HAWalletsReferenceEditWindow"
+							
+							valueToChange="wallet_id"
+							
+							newItemName="he_new wallet"
+							
+							xmlns:referencewindow="engine.components.referencewindow.*">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			import engine.core.Core;
+			
+			import projects.cabinet.elements.hawindow.elements.HAEditWindow;
+		]]>
+	</fx:Script>
+	
+</referencewindow:ReferenceWindow>

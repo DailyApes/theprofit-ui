@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{getLabel(action, mode) + ' of_idea'}"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   reloadButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   getHttpServiceController="ideas"
+				   
+				   setHttpServiceController="ideas"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   focusTarget="{textArea}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*" xmlns:notes="engine.components.notes.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.events.TextOperationEvent;
+			
+			import engine.core.Core;
+			
+			override public function reloadFunction():void
+			{
+				if (data && data.@item_id)
+				{
+					requestParams = new Object();
+					requestParams.item_id = data.@item_id;
+					super.reloadFunction();
+				}
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(getHttpService, label);
+				if (result == 0)
+				{
+					valuesChanged = false;
+					requestParams = new Object();
+					data = getHttpService.lastResult.item;
+					
+					notes.reloadFunction();
+				}
+			}
+			
+			override public function yesFunction():void
+			{
+				if (Core.getObjectLength(requestParams) > 0) 
+				{
+					requestParams.item_id = data ? data.@item_id : null;
+					setHttpService.send(requestParams);
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (action == 'adding')
+					{
+						parentWindow['dataGridSet'].isNewRecord = true;
+					}
+					
+					parentWindow.reloadFunction();
+					Core.removeWindow(this);
+				}
+			}
+			
+			protected function textArea_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('description', event.target.text, action == 'adding');
+			}
+			
+			private function progressBarRefresh():void
+			{
+				progressBar.setProgress(String(getValue(data, 'description')).length, textArea.maxChars);
+			}
+			
+			override public function dataChangeFunction():void
+			{
+				callLater(progressBarRefresh);
+			}
+			
+			override protected function afterChangeValue():void
+			{
+				progressBarRefresh();
+			}
+			
+			override public function clear():void
+			{
+				super.clear();
+				notes.clear();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<mx:VDividedBox width="100%" height="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" verticalGap="5">
+			<components:FieldSet width="100%" height="100%" minHeight="200">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<s:VGroup gap="5">
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['category'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['state'])}:"/>
+							</s:VGroup>
+							
+							<s:VGroup width="100%" gap="5">
+								<extended:DropDownList width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" selectedIndex="0" labelField="@name" translateColumns="@name" dataProvider="{Core.toArrayList(Core.data.ideasCategories.dataProvider)}" selectedValue="{getValue(data, 'category_id')}" change="{changeValue('category_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
+								<extended:DropDownList width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" selectedIndex="0" labelField="@name" translateColumns="@name" dataProvider="{Core.toArrayList(Core.data.ideasStates.dataProvider)}" selectedValue="{getValue(data, 'state_id')}" change="{changeValue('state_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
+							</s:VGroup>
+							
+							<s:VGroup gap="5">
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['author'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['priority'])}:"/>
+							</s:VGroup>
+							
+							<s:VGroup width="100%" gap="5">
+								<extended:DropDownList width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" selectedIndex="1" labelField="@email" dataProvider="{Core.toArrayList(Core.data.adminsAccounts.dataProvider)}" selectedValue="{getValue(data, 'author_id')}" change="{changeValue('author_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
+								<extended:DropDownList width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" selectedIndex="1" labelField="@name" translateColumns="@name" dataProvider="{Core.toArrayList(Core.data.ideasPriorities.dataProvider)}" selectedValue="{getValue(data, 'priority_id')}" change="{changeValue('priority_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
+							</s:VGroup>
+						</s:HGroup>
+						
+						<extended:TextArea id="textArea" width="100%" height="100%" minHeight="{Core.size * Core.sizeMultiplier}" verticalAlign="top" maxChars="500" text="{getValue(data, 'description')}" change="textArea_changeHandler(event)" creationComplete="{event.target.setFocus()}"/>
+						
+						<mx:ProgressBar id="progressBar" width="100%" paddingLeft="-1" paddingRight="-1" mode="manual" minimum="0" label="{Core.translate.to(['characters_'])}: %1 {Core.translate.to(['of'])} %2 (%3%%)" labelPlacement="center"/>
+						
+						<!--<components:HSplitter/>-->
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>
+			
+			<notes:Notes id="notes" moduleId="1" data="{data}" visible="{action !== 'adding'}" includeInLayout="{action !== 'adding'}"/>
+		</mx:VDividedBox>
+	</components:content>
+	
+</components:Window>

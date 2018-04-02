@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HDividedBox xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  
+		  horizontalGap="5"
+		  creationComplete="creationCompleteHandler(event)"
+		  
+		  xmlns:extended="engine.extended.*"
+		  xmlns:components="engine.components.*">
+	
+	<fx:Metadata>
+		[Event(name="change", type="flash.events.Event")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			import spark.events.TextOperationEvent;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.elements.TextFlow;
+			
+			[Bindable]
+			private var startSelection:Number;
+			[Bindable]
+			private var endSelection:Number;
+			
+			private var _text:String = '';
+			
+			private var timer:Timer = new Timer(500, 1);
+			
+			[Bindable]
+			public function set text(value:String):void
+			{
+				_text = value;
+				
+				if (value !== editorTextArea.text)
+				{
+					callLater(htmlText);
+				}
+				else if (previewButton.selected)
+				{
+					timer.stop();
+					timer.start();
+				}
+			}
+			
+			public function get text():String
+			{
+				return _text;
+			}
+			
+			protected function editorTextArea_changeHandler(event:TextOperationEvent):void
+			{
+				text = editorTextArea.text;
+				dispatchEvent(new Event('change'));
+			}
+			
+			public function htmlText():void
+			{
+				var flow:TextFlow = TextConverter.importToFlow(Core.replaceVariables(editorTextArea.text), TextConverter.TEXT_FIELD_HTML_FORMAT);
+				htmlTextArea.textFlow = flow;
+			}
+			
+			protected function button_clickHandler(action:String):void
+			{
+				var selectedText:Object = new Object();
+				selectedText.textBefore = editorTextArea.text.substring(0, startSelection);
+				selectedText.text = editorTextArea.text.substring(startSelection, endSelection);
+				selectedText.textAfter = editorTextArea.text.substring(endSelection);
+				
+				switch(action)
+				{
+					case 'p':
+					{
+						applyTag(selectedText.textBefore, '<p>', selectedText.text, '</p>', selectedText.textAfter);
+						break;
+					}
+						
+					case 'a':
+					{
+						Core.launcher.launch('ATagWindow', selectedText, parentDocument as Window);
+						break;
+					}
+						
+					case 'font':
+					{
+						Core.launcher.launch('FontTagWindow', selectedText, parentDocument as Window);
+						break;
+					}
+						
+					case 'b':
+					{
+						applyTag(selectedText.textBefore, '<b>', selectedText.text, '</b>', selectedText.textAfter);
+						break;
+					}
+						
+					case 'i':
+					{
+						applyTag(selectedText.textBefore, '<i>', selectedText.text, '</i>', selectedText.textAfter);
+						break;
+					}
+						
+					case 'u':
+					{
+						applyTag(selectedText.textBefore, '<u>', selectedText.text, '</u>', selectedText.textAfter);
+						break;
+					}
+						
+					case 'br':
+					{
+						applyTag(selectedText.textBefore, '', selectedText.text, '<br>', selectedText.textAfter);
+						break;
+					}
+						
+					case 'li':
+					{
+						applyTag(selectedText.textBefore, '<li>', selectedText.text, '</li>', selectedText.textAfter);
+						break;
+					}
+						
+					case 'img':
+					{
+						Core.launcher.launch('ImgTagWindow', selectedText, parentDocument as Window);
+						break;
+					}
+				}
+			}
+			
+			public function applyTag(textBefore:String, addTextBefore:String, text:String, addTextAfter:String, textAfter:String):void
+			{
+				editorTextArea.text = textBefore + addTextBefore + text + addTextAfter + textAfter;
+				editorTextArea.dispatchEvent(new TextOperationEvent('change'));
+				
+				callLater(function():void
+				{
+					editorTextArea.setFocus();
+					editorTextArea.selectRange(startSelection + addTextBefore.length, startSelection + addTextBefore.length + text.length);
+				});
+			}
+			
+			protected function editorTextArea_selectionChangeHandler(event:FlexEvent):void
+			{
+				if (editorTextArea.selectionAnchorPosition <= editorTextArea.selectionActivePosition)
+				{
+					startSelection = editorTextArea.selectionAnchorPosition;
+					endSelection = editorTextArea.selectionActivePosition;
+				}
+				else
+				{
+					startSelection = editorTextArea.selectionActivePosition;
+					endSelection = editorTextArea.selectionAnchorPosition;
+				}
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				timer.addEventListener(TimerEvent.TIMER, timer_timerHandler);
+			}
+			
+			private function timer_timerHandler(event:TimerEvent):void
+			{
+				htmlText();
+			}
+			
+			protected function previewButton_clickHandler(event:MouseEvent):void
+			{
+				if (previewButton.selected)
+				{
+					previewButton.selected = false;					
+				}
+				else
+				{
+					htmlText();
+				}
+				
+				if (event.ctrlKey)
+				{
+					previewButton.selected = true;
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%">
+		<extended:TextArea id="editorTextArea" width="100%" height="100%" verticalAlign="top" text="{text}" selectionChange="editorTextArea_selectionChangeHandler(event)" change="editorTextArea_changeHandler(event)"/>
+		
+		<components:FieldSet width="100%">
+			<components:content>
+				<s:HGroup width="100%" gap="2" paddingLeft="2" paddingRight="2" paddingTop="2" paddingBottom="2">
+					<components:Button width="100%" doNotTranslate="true" label="p" click="button_clickHandler('p')"/>
+					<components:Button width="100%" doNotTranslate="true" label="a" click="button_clickHandler('a')"/>
+					<components:Button width="100%" doNotTranslate="true" label="font" click="button_clickHandler('font')"/>
+					<components:Button width="100%" doNotTranslate="true" label="b" click="button_clickHandler('b')"/>
+					<components:Button width="100%" doNotTranslate="true" label="i" click="button_clickHandler('i')"/>
+					<components:Button width="100%" doNotTranslate="true" label="u" click="button_clickHandler('u')"/>
+					<components:Button width="100%" doNotTranslate="true" label="br" click="button_clickHandler('br')"/>
+					<components:Button width="100%" doNotTranslate="true" label="li" click="button_clickHandler('li')"/>
+					<components:Button width="100%" doNotTranslate="true" label="img" click="button_clickHandler('img')"/>
+					
+					<components:Button id="previewButton" icon="magnifier" click="previewButton_clickHandler(event)"/>
+				</s:HGroup>  
+			</components:content>
+		</components:FieldSet>
+	</s:VGroup>
+		
+	<extended:TextArea id="htmlTextArea" width="100%" height="100%" verticalAlign="top" editable="false" lineHeight="100%"/>
+</mx:HDividedBox>

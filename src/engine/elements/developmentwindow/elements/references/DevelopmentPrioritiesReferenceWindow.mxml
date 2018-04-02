@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   centered="true"
+				   doNotGroup="true"
+				   
+				   icon="book_bookmark"
+				   label="development - priorities"
+				   
+				   autoreloadEnabled="true"
+				   
+				   dataStorage="{Core.data.developmentPriorities}"
+				   
+				   setHttpServiceController="development"
+				   setHttpServiceAction="delete"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   menu="{new ArrayCollection()}"
+				   
+				   autoreloadrRun="{numChildrenWindows == 0}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.core.ScrollPolicy;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			public function addFunction():void
+			{
+				//Core.launcher.launch('DevelopmentEditWindow', null, this, ['adding']);
+			}
+			
+			public function editFunction():void
+			{
+				//Core.launcher.launch('DevelopmentEditWindow', dataGridSet.dataGrid.selectedItem, this, ['editing']);
+			}
+			
+			public function copyFunction():void
+			{
+				/*var selectedItem:Object = ObjectUtil.clone(dataGridSet.dataGrid.selectedItem);
+				selectedItem.@item_id = null;
+				var window:Window = Core.launcher.launch('DevelopmentEditWindow', selectedItem, this, ['adding']);*/
+			}
+			
+			public function deleteFunction():void
+			{
+				/*var window:Window = Core.launcher.launch('ConfirmWindow');
+				window.parentWindow = this;
+				
+				window['onYesFunction'] = function():void
+				{
+					requestParams = new Object();
+					
+					var array:Array = new Array();
+					for (var i:int = 0; i < dataGridSet.dataGrid.selectedItems.length; i++) 
+					{
+						array.push(dataGridSet.dataGrid.selectedItems[i].@item_id);
+					}
+					
+					requestParams.item_id = array.toString();
+					setHttpService.send(requestParams);
+					
+					Core.removeWindow(window);
+				};*/
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				reloadFunction();
+			}
+			
+			override public function dataStorage_changeFunction():void
+			{
+				if (dataGridSet.dataProvider)
+				{
+					for (var i:int = 0; i < dataGridSet.dataProvider.length(); i++) 
+					{
+						dataGridSet.dataProvider[i].@paint1 = dataGridSet.dataProvider[i].@color;
+					}					
+				}
+			}
+			
+			/*private function countLevel(exp:Number, сost:Number = 100, rate:Number = 0.2):Array
+			{
+				var level:Number = 0;
+				while (exp >= сost)
+				{
+					level++;
+					exp -= сost;
+					сost += сost *= rate;
+				}
+				
+				return [level, Math.round(exp), Math.round(сost)];
+			}*/
+			
+			/*override public function reloadFunction():void
+			{
+				Core.data.developmentStates.refresh();
+				Core.data.developmentCategories.refresh();
+				Core.data.developmentPriorities.refresh();
+				
+				super.reloadFunction();
+			}*/
+			
+			/*override public function menuFill():void
+			{
+				menu = new ArrayCollection(
+					[
+						{label: Core.translate.to(['references']), children: new ArrayCollection([
+							{label: Core.translate.to(['categories']), action: '', enabled: true},
+							{label: Core.translate.to(['priorities']), action: '', enabled: true},
+							{label: Core.translate.to(['states']), action: '', enabled: true},
+						])}
+					]);
+			}*/
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<components:DataGridSet id="dataGridSet"
+									width="100%"
+									height="100%"
+									
+									translateColumns="@name"
+								
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{dataStorage.dataProvider}"
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{numChildrenWindows == 0}"
+									
+									addFunction="{addFunction}"
+									editFunction="{editFunction}"
+									copyFunction="{copyFunction}"
+									reloadFunction="{reloadFunction}"
+									deleteFunction="{deleteFunction}">
+					
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['id'])}" dataField="@item_id"/>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['name'])}" dataField="@name" itemRenderer="engine.itemrenderrers.PaintAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['description'])}" dataField="@description"/>
+				</components:columns>
+			</components:DataGridSet>
+		</s:HGroup>
+	</components:content>
+</components:Window>
+

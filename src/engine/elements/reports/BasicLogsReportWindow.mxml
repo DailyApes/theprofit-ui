@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="calendar"
+				   label="logs of_changes"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   menu="{new ArrayCollection()}"
+				   
+				   autoreloadEnabled="true"
+				   
+				   getHttpServiceController="logschanges"
+				   
+				   refreshArray="{[Core.data.accounts]}"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.net.navigateToURL;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.collections.SortField;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			import flashx.textLayout.container.ScrollPolicy;
+			
+			override public function getHttpService_resultFunction():void
+			{
+				if (dataGridSet.dataProvider)
+				{
+					for (var i:int = 0; i < dataGridSet.dataProvider.length(); i++)
+					{
+						dataGridSet.dataProvider[i].@account = Core.getItemValue(Core.data.accounts.dataProvider, '@item_id', dataGridSet.dataProvider[i].@account_id, '@label');
+						dataGridSet.dataProvider[i].@vk_id = Core.getItemValue(Core.data.accounts.dataProvider, '@item_id', dataGridSet.dataProvider[i].@account_id, '@vk_id');
+					}					
+				}
+				
+				accountsSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+			}
+			
+			override public function reloadFunction():void
+			{
+				if (dateSelector.initialised)
+				{
+					requestParams.from_date = dateSelector.fromDate ? Core.dateConvert(dateSelector.fromDate) : null;
+					requestParams.to_date = dateSelector.toDate ? Core.dateConvert(new Date(dateSelector.toDate.time + (24 * 60 * 60 * 1000 - 1))) : null;
+					super.reloadFunction();
+				}
+			}
+			
+			protected function openVkButton_clickHandler(event:MouseEvent):void
+			{
+				var urlRequest:URLRequest = new URLRequest();
+				urlRequest.url = 'https://vk.com/id' + dataGridSet.dataGrid.selectedItem['@vk_id'];
+				navigateToURL(urlRequest, '_blank');
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:VGroup id="filtersGroup" width="200" height="100%" gap="5">
+				<components:DateSelector id="dateSelector" action="currentDay" hoursEnabled="true" change="{reloadFunction()}"/>
+				<components:SelectableList id="accountsSelectableList" width="100%" radioButtonsEnabled="true" height="100%" selected="true" matter="accounts" column="@account_id" labelField="@label" sortEnabled="false" dataProvider="{Core.toArrayList(Core.data.accounts.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+			</s:VGroup>
+			
+			<components:DataGridSet id="dataGridSet"
+									left="5" right="5" top="5" bottom="5"
+									width="100%"
+									height="100%"
+									
+									translateColumns="@note"
+									
+									sortFields="{[new SortField('@item_id', true, true)]}"
+									
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{getHttpService.lastResult.item}"
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{!inProgress}"
+
+									filterFunctionsArray="{[accountsSelectableList.filterFunction]}"
+									clearFunctionsArray="{[accountsSelectableList.clear]}"
+									
+									reloadFunction="{reloadFunction}">
+				
+				
+				
+				<components:bottomAddon>
+					<s:VGroup width="100%" gap="-1">
+						<s:VGroup width="100%" gap="-1" visible="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@vk_id') > 0}" includeInLayout="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@vk_id') > 0}">
+							<components:Button id="openVkButton" width="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" label="VK" click="openVkButton_clickHandler(event)"/>
+							<components:Splitter width="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+						</s:VGroup>
+						<components:Button backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="contrast" toolTip="{Core.translate.to(['display', 'filters'])}" click="{filtersGroup.visible = !filtersGroup.visible; filtersGroup.includeInLayout = !filtersGroup.includeInLayout; callLater(checkSize)}"/>						
+					</s:VGroup>
+				</components:bottomAddon>
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['id'])}" dataField="@item_id"/>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date'])}" dataField="@creation_date" itemRenderer="engine.itemrenderrers.TimestampAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="250" headerText="{Core.translate.to(['account'])}" dataField="@account" fontWeight="bold" color="{Core.darkBlue}"/>
+					<mx:AdvancedDataGridColumn width="100" headerText="{Core.translate.to(['ip'])}" dataField="@ip"/>
+					<mx:AdvancedDataGridColumn width="100" headerText="{Core.translate.to(['table'])}" dataField="@table"/>
+					<mx:AdvancedDataGridColumn width="70" headerText="{Core.translate.to(['id of_record'])}" dataField="@record_id"/>
+					<mx:AdvancedDataGridColumn width="100" headerText="{Core.translate.to(['field'])}" dataField="@field"/>
+					<mx:AdvancedDataGridColumn width="150" headerText="{Core.translate.to(['it_old value'])}" dataField="@old_value"/>
+					<mx:AdvancedDataGridColumn width="150" headerText="{Core.translate.to(['it_new value'])}" dataField="@new_value"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['note'])}" dataField="@note"/>
+				</components:columns>
+			</components:DataGridSet>
+		</s:HGroup>
+	</components:content>
+</components:Window>

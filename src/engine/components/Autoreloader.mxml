@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		
+		 width="210"
+		 height="100%"
+		 
+		 creationComplete="creationCompleteHandler(event)"
+		 xmlns:extended="engine.extended.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			import engine.core.Core;
+			
+			[Bindable]
+			public var repeatCount:Number = 5 * 60;
+			
+			[Bindable]
+			private var timer:Timer = new Timer(1000, 60);
+			
+			public function set run(value:Boolean):void
+			{
+				if (value)
+				{
+					if (!timer.running && parentDocument.parent && checkBox.selected)
+					{
+						timer.start();						
+					}
+				}
+				else
+				{
+					if (timer.running)
+					{
+						timer.stop();
+					}
+				}
+			}
+			
+			public function reset():void
+			{
+				if (timer.running)
+				{
+					timer.stop();
+				}
+				
+				timer.reset();
+				progressBar.setProgress(repeatCount, repeatCount);
+				timer.repeatCount = repeatCount;
+				timer.delay = 1000;
+				
+				if (parentDocument.parent && checkBox.selected)
+				{
+					timer.start();
+				}
+			}
+			
+			protected function checkBox_changeHandler(event:Event):void
+			{
+				reset();
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				timer.addEventListener(TimerEvent.TIMER, timer_timerHandler);
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, timer_timerCompleteHandler);
+			}
+			
+			private function timer_timerCompleteHandler(event:TimerEvent):void
+			{
+				if (parentDocument.parent)
+				{
+					parentDocument.reloadFunction();
+					reset();
+				}
+			}
+			
+			
+			private function timer_timerHandler(event:TimerEvent):void
+			{
+				refresh();
+			}
+			
+			private function refresh():void
+			{
+				progressBar.setProgress(repeatCount - timer.currentCount, repeatCount);
+			}
+			
+			protected function hSlider_changeHandler(event:Event):void
+			{
+				repeatCount = hSlider.value * 60;
+				timer.repeatCount = repeatCount;
+				
+				refresh();
+				
+				if (repeatCount - timer.currentCount < 0)
+				{
+					timer_timerCompleteHandler(null);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<mx:ProgressBar id="progressBar" left="-1" right="-1" bottom="-1" top="-1" alpha="0.5" label="" labelPlacement="center" labelWidth="0" horizontalGap="0" chromeColor="{parentDocument.selected || parentDocument.childSelected ? Core.lightBlue : Core.lightGray}" minimum="0" maximum="60" direction="right" mode="manual"/>
+	
+	<s:HGroup width="100%" height="{Core.size * Core.sizeMultiplier + 4}" paddingLeft="5" paddingRight="5" verticalAlign="middle">
+		<extended:CheckBox id="checkBox" selected="true" label="{Core.translate.to(['autoreload'])}: {hSlider.minimum}-{hSlider.maximum}" change="checkBox_changeHandler(event)"/>
+		<extended:HSlider id="hSlider" width="100%" minimum="1" maximum="30" stepSize="1" value="{repeatCount / 60}" toolTip="{Core.translate.to(['autoreload', 'everys'])}: {hSlider.value} ({Core.translate.to(['of_minutes'])})" change="hSlider_changeHandler(event)"/>
+	</s:HGroup>		
+	
+</s:Group>

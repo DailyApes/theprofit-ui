@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXAdvancedDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+								  xmlns:s="library://ns.adobe.com/flex/spark" 
+								  xmlns:mx="library://ns.adobe.com/flex/mx"
+								  autoLayout="true"
+								  focusEnabled="true"
+								  mouseChildren="false"
+								  autoDrawBackground="false">
+	
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="left" paddingLeft="5" paddingRight="5"/>
+	</s:layout>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			[Bindable]
+			public var paint:Boolean;
+			[Bindable]
+			public var color:uint;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				
+				if (data)
+				{
+					color = data['@paint' + listData.columnIndex];
+					paint = Core.toBoolean(color);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Label id="lblData" width="100%" minWidth="0" showTruncationTip="true" maxDisplayedLines="1" fontWeight="{paint ? 'bold' : 'normal'}" color="{paint ? color : Core.black}" text="{listData.label}"/>
+</s:MXAdvancedDataGridItemRenderer>

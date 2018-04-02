@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 click="clickHandler(event)"
+		 width="100%"
+		 xmlns:components="engine.components.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			import engine.elements.startwindow.StartWindow;
+			
+			[Bindable]
+			public var label:String = '';
+			[Bindable]
+			public var icon:String = '';
+			[Bindable]
+			public var action:String = '';
+			
+			protected function clickHandler(event:MouseEvent):void
+			{
+				Core.findWindow(StartWindow).minimized = true;
+				Core.launcher.launch(action);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:Button width="100%" id="button" paddingWidth="5" icon="{icon}" label="{label}" defaultIconColor="white" labelColor="{Core.white}"/>
+</s:Group>

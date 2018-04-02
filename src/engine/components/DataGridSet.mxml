@@ -1,0 +1,1053 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 keyDown="keyDownHandler(event)"
+		 creationComplete="creationCompleteHandler(event)"
+		 xmlns:components="engine.components.*"
+		 xmlns:extended="engine.extended.*">
+	
+	<fx:Metadata>
+		[Event(name="change", type="mx.events.ListEvent")]
+	</fx:Metadata>
+	
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListCollection" source="{dataProvider}" collectionChange="xmlListCollection_collectionChangeHandler(event)"/>
+		
+		<mx:GroupingCollection2 id="groupingCollection" grouping="{grouping}" source="{grouping || hierarchical ? Core.toArrayList(xmlListCollection.source) : null}"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.collections.Grouping;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import mx.core.UIComponent;
+			import mx.events.AdvancedDataGridEvent;
+			import mx.events.CollectionEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			import engine.core.Core;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.elements.TextFlow;
+			
+			[Bindable]
+			public var columns:Array;
+			
+			[Bindable]
+			public var grouping:Grouping;
+			[Bindable]
+			public var hierarchical:Boolean;
+			[Bindable]
+			public var treeColumn:AdvancedDataGridColumn;
+			
+			[Bindable]
+			public var groupedColumns:Array;
+			
+			[Bindable]
+			public var variableRowHeight:Boolean = true;
+			[Bindable]
+			public var wordWrap:Boolean = true;
+			
+			private var _window:Object;
+			private var _bottomAddon:UIComponent;
+			private var _bottomRightAddon:UIComponent;
+			private var _dataProvider:Object;
+			private var _selectedIndex:Number;
+			private var _sortFields:Array = [new SortField('@item_id', false, true)];
+			
+			[Bindable]
+			public var numericFields:String = '';
+			
+			[Bindable]
+			public var yesNoColumns:String = '';
+			[Bindable]
+			public var translateColumns:String = '';
+			
+			private var _infoText:String = '';
+			
+			[Bindable]
+			public var addButtonEnabled:Boolean = true;
+			[Bindable]
+			public var copyButtonEnabled:Boolean = true;
+			[Bindable]
+			public var editButtonEnabled:Boolean = true;
+			[Bindable]
+			public var viewButtonEnabled:Boolean = true;
+			[Bindable]
+			public var reloadButtonEnabled:Boolean = true;
+			[Bindable]
+			public var deleteButtonEnabled:Boolean = true;
+			
+			[Bindable]
+			public var filterEqualDropDownListEnabled:Boolean = true;
+			[Bindable]
+			public var filterTextInputEnabled:Boolean = true;
+			[Bindable]
+			public var filterComboBoxEnabled:Boolean = true;
+			[Bindable]
+			public var rowsLabelEnabled:Boolean = true;
+			[Bindable]
+			public var selectionModeLabelEnabled:Boolean = true; 
+			[Bindable]
+			public var setupOfTabularSectionButtonEnabled:Boolean = false;
+			
+			[Bindable]
+			public var filterFunctionsArray:Array;
+			[Bindable]
+			public var clearFunctionsArray:Array;
+			
+			[Bindable]
+			public var addFunction:Function;
+			[Bindable]
+			public var editFunction:Function;
+			[Bindable]
+			public var viewFunction:Function;
+			[Bindable]
+			public var copyFunction:Function;
+			[Bindable]
+			public var reloadFunction:Function;
+			[Bindable]
+			public var deleteFunction:Function;
+			
+			[Bindable]
+			public var editButtonIcon:String = 'pencil';
+			[Bindable]
+			public var editButtonTooltip:String = 'edit';
+			
+			[Bindable]
+			public var horizontalScrollPolicy:String;
+			[Bindable]
+			public var verticalScrollPolicy:String;
+			
+			[Bindable]
+			public var multiColumnSortingEnabled:Boolean = true;
+			
+			[Bindable]
+			public var isNewRecord:Boolean;
+			
+			[Bindable]
+			public var controlPanelVisible:Boolean = true;
+			[Bindable]
+			public var controlPanelEnabled:Boolean = true;
+			
+			[Bindable]
+			public var reloadOnLocalesChange:Boolean;
+			
+			[Bindable]
+			[Inspectable(category="General", enumeration="none,singleRow,multipleRows,singleCell,multipleCells", defaultValue="singleRow")]
+			public var selectionMode:String;
+			
+			[Bindable]
+			private var lastRollOverIndex:Number;
+			
+			[Bindable]
+			public var rowCount:Number = 10;
+			
+			[Bindable]
+			public var doubleClickFunction:Function;
+			
+			[Bindable]
+			public var onFilterFunction:Function;
+			[Bindable]
+			public var onFilterFunctionParams:Array;
+			
+			[Bindable]
+			public var archivedCount:Number = 0;
+			
+			//contextMenus
+			[Bindable]
+			public var addContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var editContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var viewContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var copyContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var deleteContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var exportToXlsContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var copyToClipboardContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var clearFiltersContextMenuItem:ContextMenuItem;
+			
+			[Bindable]
+			public var customItems:Array = new Array();
+			
+			[Bindable]
+			public function set selectedIndex(value:Number):void
+			{
+				_selectedIndex = value;
+				//dataGrid.selectedIndex = selectedIndex;
+			}
+			
+			public function get selectedIndex():Number
+			{
+				return _selectedIndex;
+			}
+			
+			[Bindable]
+			public function set infoText(value:String):void
+			{
+				_infoText = value;
+				
+				var flow:TextFlow = TextConverter.importToFlow(infoText, TextConverter.TEXT_FIELD_HTML_FORMAT);
+				infoLabel.textFlow = flow;
+			}
+			
+			public function get infoText():String
+			{
+				return _infoText;
+			}
+			
+			[Bindable]
+			public function set dataProvider(value:Object):void
+			{
+				horizontalScrollPosition = dataGrid.horizontalScrollPosition;
+				verticalScrollPosition = dataGrid.verticalScrollPosition;
+				
+				_dataProvider = value;
+				
+				if (dataProvider)
+				{
+					xmlListCollection.filterFunction = filterFunction;
+					xmlListCollection.refresh();
+				}
+				
+				Core.translate.columns(dataProvider, translateColumns);
+				
+				Core.callAfter(function():void
+				{
+					if (grouping || hierarchical)
+					{
+						groupingCollection.refresh();
+						dataGrid.expandAll();
+					}
+					
+					if (isNewRecord)
+					{
+						Core.selectItem(dataGrid, '@item_id', String(Core.getItemMaxValue(dataProvider, '@item_id')), true);
+						dataGrid.scrollToIndex(dataGrid.selectedIndex);
+						isNewRecord = false;
+					}
+					else
+					{
+						if (selectedIndex > dataGrid.dataProvider.length - 1)
+						{
+							selectedIndex = dataGrid.dataProvider.length - 1
+						}
+						
+						if (selectedIndex == -1 && dataGrid.dataProvider.length > 0)
+						{
+							selectedIndex = 0;
+						}
+						
+						if (selectedIndex !== -1)
+						{
+							dataGrid.selectedIndex = selectedIndex;
+							
+							dataGrid.horizontalScrollPosition = horizontalScrollPosition <= dataGrid.maxHorizontalScrollPosition ? horizontalScrollPosition : dataGrid.maxHorizontalScrollPosition;
+							dataGrid.verticalScrollPosition = verticalScrollPosition <= dataGrid.maxVerticalScrollPosition ? verticalScrollPosition : dataGrid.maxVerticalScrollPosition;
+						}
+						
+						archivedCount = 0;
+						for (var i:int = 0; i < dataGrid.dataProvider.source.length(); i++) 
+						{
+							if (dataGrid.dataProvider.source[i]['@archived'] > 0)
+							{
+								archivedCount ++;
+							}
+						}
+					}
+				}, 10);
+				
+				if (variableRowHeight)
+				{
+					dataGrid.variableRowHeight = false;
+					callLater(function():void
+					{
+						dataGrid.variableRowHeight = true;
+					});
+				}
+				
+				if (wordWrap)
+				{
+					dataGrid.wordWrap = false;
+					callLater(function():void
+					{
+						dataGrid.wordWrap = true;
+					});
+				}
+			}
+			
+			public function get dataProvider():Object
+			{
+				return _dataProvider;
+			}
+			
+			protected function addButton_clickHandler(event:MouseEvent):void
+			{
+				if (Boolean(addFunction))
+				{
+					addFunction.apply();
+				}
+			}
+			
+			public function editButton_clickHandler(event:MouseEvent):void
+			{
+				if (Boolean(editFunction))
+				{
+					editFunction.apply();
+				}
+			}
+			
+			
+			protected function viewButton_clickHandler(event:MouseEvent):void
+			{
+				if (Boolean(viewFunction))
+				{
+					viewFunction.apply();
+				}
+			}
+			
+			protected function copyButton_clickHandler(event:MouseEvent):void
+			{
+				if (Boolean(copyFunction))
+				{
+					copyFunction.apply();
+				}
+			}
+			
+			protected function reloadButton_clickHandler(event:MouseEvent):void
+			{
+				if (Boolean(reloadFunction))
+				{
+					reloadFunction.apply();
+				}
+			}
+			
+			protected function deleteButton_clickHandler(event:MouseEvent):void
+			{
+				if (Boolean(deleteFunction))
+				{
+					deleteFunction.apply();
+				}
+			}
+			
+			[Bindable]
+			public function set sortFields(value:Array):void
+			{
+				_sortFields = value;
+				sort();
+			}
+			
+			private function sort():void
+			{
+				callLater(function():void
+				{
+					xmlListCollection.sort = new Sort();
+					xmlListCollection.sort.fields = sortFields;
+					xmlListCollection.refresh();
+				});
+			}
+			
+			public function get sortFields():Array
+			{
+				return _sortFields;
+			}
+			
+			/*public function sortNumeric(obj1:Object, obj2:Object):int
+			{
+				var value1:Number = (obj1.testvalue == '' || obj1.testvalue == null) ? null : new Number(obj1.testvalue);
+				var value2:Number = (obj2.testvalue == '' || obj2.testvalue == null) ? null : new Number(obj2.testvalue);
+				if (value1 < value2)
+				{
+					return -1;
+				}
+				else if (value1 > value2)
+				{
+					return 1;
+				}
+				else
+				{
+					return 0;
+				}
+			}*/
+			
+			public function dataGrid_doubleClickHandler(event:MouseEvent):void
+			{
+				if (controlPanelVisible && controlPanelEnabled && (Core.getClassName(event.target.parent) == 'AdvancedDataGridGroupItemRenderer' || Core.getClassName(event.target) == 'AdvancedDataGridItemRenderer' || Core.getSuperClassName(event.target) == 'MXAdvancedDataGridItemRenderer'))
+				{
+					if (Boolean(doubleClickFunction))
+					{
+						doubleClickFunction.apply(null, [event]);
+					}
+					else
+					{
+						if (editButton.visible)
+						{
+							editButton_clickHandler(null);
+						}
+					}
+				}
+			}
+			
+			override protected function keyDownHandler(event:KeyboardEvent):void
+			{
+				super.keyDownHandler(event);
+				
+				switch(event.keyCode)
+				{
+					case 45:
+					{
+						if (controlPanelVisible && addButton.visible)
+						{
+							addButton_clickHandler(null);
+						}
+						break;
+					}
+						
+					case 13:
+					{
+						if (controlPanelVisible && editButton.visible)
+						{
+							editButton_clickHandler(null);
+						}
+						break;
+					}
+						
+					case 46:
+					{
+						if (controlPanelVisible && deleteButton.visible)
+						{
+							deleteButton_clickHandler(null);
+						}
+						break;
+					}
+				}
+			}
+			
+			override public function setFocus():void
+			{
+				//super.setFocus();
+				filterTextInput.setFocus();
+				Core.callAfter(dataGrid.setFocus, 100);
+			}
+			
+			public function filter_changeHandler():void
+			{
+				xmlListCollection.filterFunction = filterFunction;
+				xmlListCollection.refresh();
+				
+				if (Boolean(onFilterFunction))
+				{
+					onFilterFunction.apply(null, onFilterFunctionParams);
+				}
+				
+				/*Core.callAfter(function():void
+				{*/
+					if (dataGrid.dataProvider.length > 0 && selectedIndex > dataGrid.dataProvider.length - 1)
+					{
+						Core.selectItem(dataGrid, '@item_id', dataGrid.dataProvider[dataGrid.dataProvider.length - 1]['@item_id'], true);
+					}					
+				/*}, 100);*/
+			}
+			
+			private function archivedFilterFunction(item:Object):Boolean
+			{
+				if (Core.toBoolean(item['@archived']))
+				{
+					return false;
+				}
+				
+				return true;
+			}
+			
+			private function filterFunction(item:Object):Boolean
+			{
+				var result:Boolean = true;
+				
+				if (filterFunctionsArray)
+				{
+					for (var i:int = 0; i < filterFunctionsArray.length; i++) 
+					{
+						result = filterFunctionsArray[i](item);
+						
+						if (!result)
+						{
+							break;
+						}
+					}
+				}
+								
+				return archivedFilterFunction(item) && textFilterFunction(item) && result || isNewRecord && item['@item_id'] == Core.getItemMaxValue(dataProvider, '@item_id');
+			}
+			
+			private function textFilterFunction(item:Object):Boolean
+			{
+				var valueA:String;
+				var valueB:String = String(filterTextInput.text).toLowerCase();
+				
+				if (filterTextInput.text !== '')
+				{
+					if (filterComboBox.selectedIndex == -1)
+					{
+						for (var i:int = 0; i < dataGrid.columns.length; i++) 
+						{
+							valueA = String(item[dataGrid.columns[i].dataField]).toLowerCase();
+							if (compare(valueA, valueB))
+							{
+								return true;
+							}
+						}
+					}
+					else
+					{
+						valueA = String(item[filterComboBox.selectedItem.dataField]).toLowerCase();
+						if (compare(valueA, valueB))
+						{
+							return true;
+						}
+					}
+					
+					return false;
+				}
+				else
+				{
+					return true;
+				}
+				
+				function compare(valueA:String, valueB:String):Boolean
+				{
+					switch(filterEqualDropDownList.selectedIndex)
+					{
+						case 0:
+						{
+							if (valueA.indexOf(valueB) > -1)
+							{
+								return true;
+							}									
+							break;
+						}
+							
+						case 1:
+						{
+							if (valueA.indexOf(valueB) == -1)
+							{
+								return true;
+							}									
+							break;
+						}
+							
+						case 2:
+						{
+							if (!isNaN(Number(valueA)) && !isNaN(Number(valueB)))
+							{
+								if (Number(valueA) == Number(valueB))
+								{
+									return true;	
+								}
+								return false;
+							}
+							else if (valueA == valueB)
+							{
+								return true;
+							}
+							break;
+						}
+							
+						case 3:
+						{
+							if (!isNaN(Number(valueA)) && !isNaN(Number(valueB)))
+							{
+								if (Number(valueA) !== Number(valueB))
+								{
+									return true;	
+								}
+								return false;
+							}
+							else if (valueA !== valueB)
+							{
+								return true;
+							}
+							break;
+						}
+							
+						case 4:
+						{
+							if (!isNaN(Number(valueA)) && !isNaN(Number(valueB)))
+							{
+								if (Number(valueA) > Number(valueB))
+								{
+									return true;	
+								}
+								return false;
+							}
+							else if (valueA > valueB)
+							{
+								return true;
+							}
+							break;
+						}
+							
+						case 5:
+						{
+							if (!isNaN(Number(valueA)) && !isNaN(Number(valueB)))
+							{
+								if (Number(valueA) < Number(valueB))
+								{
+									return true;	
+								}
+								return false;
+							}
+							else if (valueA < valueB)
+							{
+								return true;
+							}
+							break;
+						}
+					}
+					
+					return false;
+				}
+			}
+			
+			protected function filterFixedTextInput_keyDownHandler(event:KeyboardEvent):void
+			{
+				/*switch(event.keyCode)
+				{
+					case 13:
+					{
+						if (!event.ctrlKey)
+						{
+							dataGrid.dispatchEvent(event);
+						}
+						break;
+					}
+					
+					case 33:
+					case 34:
+					case 38:
+					case 40:
+					{
+						dataGrid.dispatchEvent(event);
+						break;
+					}
+				}*/
+			}
+			
+			protected function dataGrid_changeHandler(event:ListEvent):void
+			{
+				if (dataGrid.selectedItems.length <= 1)
+				{
+					selectedIndex = dataGrid.selectedIndex;
+				}
+				
+				dispatchEvent(event);
+			}
+			
+			protected function clearFiltersButton_clickHandler(event:MouseEvent):void
+			{
+				clear();
+			}
+			
+			public function clear():void
+			{
+				filterEqualDropDownList.selectedIndex = 0;
+				filterTextInput.text = '';
+				filterComboBox.selectedIndex = -1;
+				
+				filter_changeHandler();
+				
+				if (clearFunctionsArray)
+				{
+					for (var i:int = 0; i < clearFunctionsArray.length; i++) 
+					{
+						clearFunctionsArray[i]();
+					}
+				}
+			}
+			
+			protected function filterComboBox_changeHandler(event:IndexChangeEvent):void
+			{
+				filter_changeHandler();
+			}
+			
+			protected function dataGrid_headerReleaseHandler(event:AdvancedDataGridEvent):void
+			{
+				callLater(function():void
+				{
+					var sort:Sort = new Sort();
+					sort.fields = xmlListCollection.sort.fields;
+					
+					for (var i:int = 0; i < sortFields.length; i++)
+					{
+						for (var j:int = 0; j < sort.fields.length; j++) 
+						{
+							if (sort.fields[j].name == sortFields[i].name)
+							{
+								sort.fields[j].numeric = sortFields[i].numeric;
+							}
+						}
+						
+						var array:Array = Core.replaceAll(numericFields, ' ', '').split(',');
+						for (j = 0; j < array.length; j++) 
+						{
+							if (sort.fields[j] && sort.fields[j].name == array[i])
+							{
+								sort.fields[j].numeric = true;
+							}
+						}
+					}
+					
+					xmlListCollection.sort = sort;
+					xmlListCollection.refresh();
+				});
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				if (Core.getSuperClassName(parentDocument).indexOf('Window') !== -1)
+				{
+					window = parentDocument;
+				}
+				else
+				{
+					window = parentDocument.parentDocument;
+				}
+				
+				Core.translate.addEventListener(Event.CHANGE, locales_changeHandler);
+				
+				addContextMenuItem = new ContextMenuItem('', true, true, true);
+				addContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, addContextMenuItem_menuItemSelectHandler);
+				
+				editContextMenuItem = new ContextMenuItem('', false, true, true);
+				editContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, editContextMenuItem_menuItemSelectHandler);
+				
+				viewContextMenuItem = new ContextMenuItem('', false, true, true);
+				viewContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, viewContextMenuItem_menuItemSelectHandler);
+				
+				copyContextMenuItem = new ContextMenuItem('', false, true, true);
+				copyContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, copyContextMenuItem_menuItemSelectHandler);
+				
+				deleteContextMenuItem = new ContextMenuItem('', false, true, true);
+				deleteContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, deleteContextMenuItem_menuItemSelectHandler);
+				
+				exportToXlsContextMenuItem = new ContextMenuItem('', false, true, true);
+				exportToXlsContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, exportToXlsContextMenuItem_menuItemSelectHandler);
+				
+				copyToClipboardContextMenuItem = new ContextMenuItem('', false, true, true);
+				copyToClipboardContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, copyToClipboardContextMenuItem_menuItemSelectHandler);
+				
+				clearFiltersContextMenuItem = new ContextMenuItem('', true, true, true);
+				clearFiltersContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, clearFiltersContextMenuItem_menuItemSelectHandler);
+				
+				
+				if (window.hasOwnProperty('onСontextMenuSelect'))
+				{
+					window.onСontextMenuSelect = onСontextMenuSelect;
+				}
+			}
+			
+			private function onСontextMenuSelect():void
+			{
+				dataGrid.selectedIndex = lastRollOverIndex;
+				
+				addContextMenuItem.caption = addButton.toolTip;
+				addContextMenuItem.visible = addButton.visible;
+				
+				editContextMenuItem.caption = editButton.toolTip;
+				editContextMenuItem.visible = editButton.visible;
+				
+				viewContextMenuItem.caption = viewButton.toolTip;
+				viewContextMenuItem.visible = viewButton.visible;
+				
+				copyContextMenuItem.caption = copyButton.toolTip;
+				copyContextMenuItem.visible = copyButton.visible;
+				
+				deleteContextMenuItem.caption = deleteButton.toolTip;
+				deleteContextMenuItem.visible = deleteButton.visible;
+				
+				/*exportToXlsContextMenuItem.caption = exportToXlsButton.toolTip;
+				exportToXlsContextMenuItem.visible = exportToXlsButtonEnabled;*/
+				
+				/*copyToClipboardContextMenuItem.caption = core.localesManager.translate('copy_to_clipboard');
+				copyToClipboardContextMenuItem.visible = copyToClipboardEnabled;*/
+				
+				clearFiltersContextMenuItem.caption = clearFiltersButton.toolTip;
+				clearFiltersContextMenuItem.visible = clearFiltersButton.visible;
+				
+				var array:Array = [addContextMenuItem, editContextMenuItem, viewContextMenuItem, copyContextMenuItem, deleteContextMenuItem, /*exportToXlsContextMenuItem*/, /*copyToClipboardContextMenuItem*/, clearFiltersContextMenuItem];
+				
+				for (var i:int = 0; i < customItems.length; i++)
+				{
+					array.push(customItems[i]);
+				}
+				
+				for (i = 0; i < array.length; i++)
+				{
+					window.contextMenu.customItems.push(array[i]);
+				}
+			}
+			
+			private function addContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				addButton_clickHandler(null);
+			}
+			
+			private function editContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				editButton_clickHandler(null);
+			}
+			
+			private function viewContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				viewButton_clickHandler(null);
+			}
+			
+			private function copyContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				copyButton_clickHandler(null);
+			}
+			
+			private function deleteContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				deleteButton_clickHandler(null);
+			}
+			
+			private function reloadContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				reloadButton_clickHandler(null);
+			}
+			
+			private function exportToXlsContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				exportToXlsFunction();
+			}
+			
+			private function copyToClipboardContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				var rowDataCopy:String;
+				
+				/*if(event.mouseTarget is UITextField)
+				{
+					rowDataCopy = event.mouseTarget['listData'].label;					
+				}
+				
+				if (rowDataCopy !== '')
+				{
+					try
+					{
+						System.setClipboard(rowDataCopy);
+						core.addMessage(['clipboard', ': ', rowDataCopy], 'information');
+					} 
+					catch(error:Error) 
+					{
+						
+					}
+				}*/
+			}
+			
+			private function exportToXlsFunction():void
+			{
+				/*DataGridUtil.exportDGToClipboard(dataGrid, false, dataGrid.selectedItems.length > 1, hideInvisible);*/
+			}
+			
+			private function clearFiltersContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				clear();
+			}
+			
+			private function locales_changeHandler(event:Event):void
+			{
+				if (reloadOnLocalesChange)
+				{
+					reloadButton_clickHandler(null);
+				}
+			}
+			
+			public function refresh():void
+			{
+				xmlListCollection.refresh();
+			}
+			
+			protected function setupOfTabularSectionButton_clickHandler(event:MouseEvent):void
+			{
+				
+			}
+			
+			public function translate():void
+			{
+				Core.translate.columns(dataProvider, translateColumns);
+			}
+			
+			[Bindable]
+			public function set window(value:Object):void
+			{
+				_window = value;
+			}
+			
+			public function get window():Object
+			{
+				return _window;
+			}
+			
+			[Bindable]
+			public function set bottomAddon(value:UIComponent):void
+			{
+				_bottomAddon = value;
+				
+				if (bottomAddon) bottomAddonGroup.addElementAt(bottomAddon, 0);
+			}
+			
+			public function get bottomAddon():UIComponent
+			{
+				return _bottomAddon;
+			}
+			
+			[Bindable]
+			public function set bottomRightAddon(value:UIComponent):void
+			{
+				_bottomRightAddon = value;
+				
+				if (bottomRightAddon) bottomRightAddonGroup.addElementAt(bottomRightAddon, 0);
+			}
+			
+			public function get bottomRightAddon():UIComponent
+			{
+				return _bottomRightAddon;
+			}
+			
+			protected function dataGrid_itemRollOverHandler(event:ListEvent):void
+			{
+				lastRollOverIndex = event.rowIndex;
+			}
+			
+			protected function xmlListCollection_collectionChangeHandler(event:CollectionEvent):void
+			{
+				
+			}
+		
+		]]>
+	</fx:Script>
+	
+	<s:HGroup width="100%" height="100%" gap="-1">
+		<s:Group height="100%" minWidth="{Core.size * Core.sizeMultiplier + 4}" visible="{addButton.includeInLayout || editButton.includeInLayout || reloadButton.includeInLayout || deleteButton.includeInLayout}" includeInLayout="{addButton.includeInLayout || editButton.includeInLayout || reloadButton.includeInLayout || deleteButton.includeInLayout}">
+			
+			<components:Background fillColor="0xffffff"/>
+			<components:Border/>				
+			
+			<s:VGroup id="controlPanelGroup" height="100%" visible="{controlPanelVisible}" gap="-1" enabled="{controlPanelEnabled}">
+				<components:Button id="addButton" visible="{Boolean(addFunction) &amp;&amp; addButtonEnabled}" includeInLayout="{Boolean(addFunction) &amp;&amp; addButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.green}" overColor="{Core.lightGreen}" downColor="{Core.darkGreen}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="plus" toolTip="{Core.translate.to(['add'])}" click="addButton_clickHandler(event)"/>
+				
+				<components:Splitter width="100%" visible="{editButton.includeInLayout || viewButton.includeInLayout || copyButton.includeInLayout}" includeInLayout="{editButton.includeInLayout || viewButton.includeInLayout || copyButton.includeInLayout}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<components:Button id="editButton" visible="{Core.getItem(dataGrid.selectedItems, 'length') == 1 &amp;&amp; Boolean(editFunction) &amp;&amp; editButtonEnabled}" includeInLayout="{Core.getItem(dataGrid.selectedItems, 'length') == 1 &amp;&amp; Boolean(editFunction) &amp;&amp; editButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="{editButtonIcon}" toolTip="{Core.translate.to([editButtonTooltip])}" click="editButton_clickHandler(event)"/>
+				<components:Button id="viewButton" visible="{Core.getItem(dataGrid.selectedItems, 'length') == 1 &amp;&amp; Boolean(viewFunction) &amp;&amp; viewButtonEnabled}" includeInLayout="{Core.getItem(dataGrid.selectedItems, 'length') == 1 &amp;&amp; Boolean(viewFunction) &amp;&amp; viewButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="pencil" toolTip="{Core.translate.to(['view'])}" click="viewButton_clickHandler(event)"/>
+				<components:Button id="copyButton" visible="{Core.getItem(dataGrid.selectedItems, 'length') == 1 &amp;&amp; Boolean(copyFunction) &amp;&amp; copyButtonEnabled}" includeInLayout="{Core.getItem(dataGrid.selectedItems, 'length') == 1 &amp;&amp; Boolean(copyFunction) &amp;&amp; copyButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="copy" toolTip="{Core.translate.to(['make_a_copy'])}" click="copyButton_clickHandler(event)"/>
+				
+				<components:Splitter width="100%" visible="{addButton.includeInLayout || editButton.includeInLayout || viewButton.includeInLayout || copyButton.includeInLayout}" includeInLayout="{addButton.includeInLayout || editButton.includeInLayout || viewButton.includeInLayout || copyButton.includeInLayout}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<components:Button id="deleteButton" visible="{Core.getItem(dataGrid.selectedItems, 'length') > 0 &amp;&amp; Boolean(deleteFunction) &amp;&amp; deleteButtonEnabled}" includeInLayout="{Core.getItem(dataGrid.selectedItems, 'length') > 0 &amp;&amp; Boolean(deleteFunction) &amp;&amp; deleteButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.red}" overColor="{Core.lightRed}" downColor="{Core.darkRed}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="minus" toolTip="{Core.translate.to(['delete record'])}" click="deleteButton_clickHandler(event)"/>
+				
+				<components:Splitter width="100%" visible="{deleteButton.includeInLayout}" includeInLayout="{deleteButton.includeInLayout}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<components:Button id="reloadButton" visible="{Boolean(reloadFunction) &amp;&amp; reloadButtonEnabled}" includeInLayout="{Boolean(reloadFunction) &amp;&amp; reloadButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.orange}" overColor="{Core.lightOrange}" downColor="{Core.darkOrange}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="reload" toolTip="{Core.translate.to(['reload data'])}" click="reloadButton_clickHandler(event)"/>
+				
+				<components:Splitter width="100%" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<s:Spacer height="100%"/>
+				
+				<s:VGroup id="bottomAddonGroup" width="100%" visible="{bottomAddon}" includeInLayout="{bottomAddon}" gap="-1">
+					<components:Splitter width="100%" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}"/>	
+				</s:VGroup>
+				
+				<components:Button id="clearFiltersButton" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="paint" toolTip="{Core.translate.to(['clear', 'filters'])}" click="clearFiltersButton_clickHandler(event)"/>
+			</s:VGroup>
+
+		</s:Group>  
+		
+		
+		<!--<extended:AdvancedDataGrid id="dataGrid"
+		width="100%" minWidth="0"
+		height="100%"
+		
+		
+		/>-->
+		
+		
+		<s:VGroup gap="-1" width="100%" height="100%">
+			<extended:AdvancedDataGrid id="dataGrid"
+									   width="100%" minWidth="0"
+									   height="100%"
+									   columns="{columns}"
+									   dataProvider="{grouping || hierarchical ? groupingCollection : xmlListCollection}"
+									   selectionMode="{selectionMode}"
+									   variableRowHeight="{variableRowHeight}"
+									   wordWrap="{wordWrap}"
+									   sortExpertMode="true"
+									   
+									   focusAlpha="0"
+									   headerHeight="{Core.size * Core.sizeMultiplier + 3}"
+									   selectedIndex="{selectedIndex}"
+									   rowCount="{rowCount}"
+									   horizontalScrollPolicy="{horizontalScrollPolicy}"
+									   verticalScrollPolicy="{verticalScrollPolicy}"
+									   
+									   designViewDataType="flat"
+									   doubleClickEnabled="true"
+									   doubleClick="dataGrid_doubleClickHandler(event)"
+									   creationComplete="{event.target.setFocus(); sort()}"
+									   headerRelease="dataGrid_headerReleaseHandler(event)"
+									   rollOverColor="{!window.selected ? Core.lightGray : getStyle('rollOverColor')}"
+									   selectionColor="{!window.selected ? Core.gray : getStyle('selectionColor')}"
+									   itemRollOver="dataGrid_itemRollOverHandler(event)"
+									   
+									   treeColumn="{treeColumn}"
+									   groupedColumns="{groupedColumns}"
+									   
+									   change="dataGrid_changeHandler(event)"/>
+			
+			<s:Group width="100%">
+				<components:Background fillColor="0xffffff"/>
+				<components:Border/>
+				
+				<s:HGroup width="100%">
+					<s:HGroup width="100%" paddingLeft="2" paddingRight="5" paddingTop="2" paddingBottom="2" gap="1" verticalAlign="middle">
+						<extended:ComboBox id="filterComboBox" width="{Core.size * 150}" height="{Core.size * Core.sizeMultiplier}" visible="{filterComboBoxEnabled}" includeInLayout="{filterComboBoxEnabled}" selectedIndex="-1" prompt="{Core.translate.to(['alls', 'columns'])}" dataProvider="{new ArrayCollection(dataGrid.columns)}" labelField="headerText" change="filterComboBox_changeHandler(event)"/>
+						<extended:DropDownList id="filterEqualDropDownList" width="{Core.size * 50}" height="{Core.size * Core.sizeMultiplier}" visible="{filterEqualDropDownListEnabled}" includeInLayout="{filterEqualDropDownListEnabled}" selectedIndex="0" change="filter_changeHandler()">
+							<extended:dataProvider>
+								<s:ArrayList>
+									<fx:Object label="~"/>
+									<fx:Object label="!~"/>
+									<fx:Object label="="/>
+									<fx:Object label="!="/>
+									<fx:Object label=">"/>
+									<fx:Object label="&#60;"/>
+								</s:ArrayList>
+							</extended:dataProvider>
+						</extended:DropDownList>
+						<extended:TextInput id="filterTextInput" width="{Core.size * 150}" height="{Core.size * Core.sizeMultiplier}" visible="{filterTextInputEnabled}" includeInLayout="{filterTextInputEnabled}" prompt="{Core.translate.to(['filter'])}" keyDown="filterFixedTextInput_keyDownHandler(event)" change="filter_changeHandler()"/>
+
+						<s:Label id="rowsLabel" paddingLeft="5" visible="{rowsLabelEnabled}" includeInLayout="{rowsLabelEnabled}" verticalAlign="middle" showTruncationTip="true" maxDisplayedLines="1" text="{xmlListCollection.length} / {xmlListCollection.source.length() - archivedCount}"/>
+						<s:Label width="100%" minWidth="{Core.size * 3 * Core.sizeMultiplier}" paddingLeft="5" visible="{selectionMode == 'multipleRows' &amp;&amp; selectionModeLabelEnabled &amp;&amp; width > 1000}" includeInLayout="{selectionMode == 'multipleRows' &amp;&amp; selectionModeLabelEnabled &amp;&amp; width > 1000}" verticalAlign="middle" showTruncationTip="true" maxDisplayedLines="1" text="{Core.translate.to(['| (ctrl + click)', 'to_select', 'of_multiple', 'of_rows'])}"/>
+						<s:RichText id="infoLabel" width="100%" visible="{infoText.length > 0}" includeInLayout="{infoText.length > 0}" fontWeight="bold" verticalAlign="middle" textAlign="right" showTruncationTip="true" maxDisplayedLines="1"/>
+					</s:HGroup>
+					
+					<s:Group id="bottomRightAddonGroup" visible="{bottomRightAddon}" includeInLayout="{bottomRightAddon}"/>
+					
+					<components:Button id="setupOfTabularSectionButton" visible="{setupOfTabularSectionButtonEnabled}" includeInLayout="{setupOfTabularSectionButtonEnabled}" backgroundAlpha="{window.selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{window.selected ? 'white' : 'gray'}" icon="gear" toolTip="{Core.translate.to(['setup', 'of_tabular_section'])}" click="setupOfTabularSectionButton_clickHandler(event)"/>
+				</s:HGroup>
+			</s:Group>  
+		</s:VGroup>
+	</s:HGroup>
+</s:Group>

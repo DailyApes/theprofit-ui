@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="calculator"
+				   label="{action.length > 0 ? action : 'calculator'}"
+				   
+				   yesOnKeyDown="false"
+				   yesButtonEnabled="{parentWindow}"
+				   clearButtonEnabled="true"
+				   resizable="false"
+				   
+				   doNotGroup="true"
+				   centered="true"
+
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			import engine.extended.NumericStepper;
+			
+			private var _numericStepper:NumericStepper;
+			
+			override public function init():void
+			{
+				super.init();
+
+				data = new Object();
+				data['@value'] = '0';
+				dispatchEvent(new Event('change'));
+			}
+			
+			[Bindable]
+			public function set numericStepper(value:NumericStepper):void
+			{
+				_numericStepper = value;
+			}
+			
+			public function get numericStepper():NumericStepper
+			{
+				return _numericStepper;
+			}
+			
+			private function addNumber(value:Number):void
+			{
+				var targetValue:String = !getValue(data, 'operation') ? 'value' : 'value2';
+				if (getValue(data, targetValue) == '0')
+				{
+					changeValue(targetValue, value);
+				}
+				else
+				{
+					changeValue(targetValue, String(getValue(data, targetValue)) + String(value));
+				}
+			}
+			
+			private function setOperation(value:String):void
+			{
+				if (getValue(data, 'value2') || getValue(data, 'bufferValue2'))
+				{
+					if (getValue(data, 'operation'))
+					{
+						calculate();
+					}
+					changeValue('operation', value);
+				}
+				else
+				{
+					changeValue('operation', value);
+				}
+			}
+			
+			private function calculate():void
+			{
+				if (getValue(data, 'operation'))
+				{
+					switch(getValue(data, 'operation'))
+					{
+						case '/':
+						{
+							changeValue('value', Number(getValue(data, 'value')) / Number(getValue(data, 'value2')));
+							break;
+						}
+							
+						case '*':
+						{
+							changeValue('value', Number(getValue(data, 'value')) * Number(getValue(data, 'value2')));
+							break;
+						}
+							
+						case '-':
+						{
+							changeValue('value', Number(getValue(data, 'value')) - Number(getValue(data, 'value2')));
+							break;
+						}
+							
+						case '+':
+						{
+							changeValue('value', Number(getValue(data, 'value')) + Number(getValue(data, 'value2')));
+							break;
+						}
+							
+						default:
+						{
+							break;
+						}
+					}
+					
+					if (getValue(data, 'value2'))
+					{
+						changeValue('bufferValue2', getValue(data, 'value2'));
+					}
+					
+					if (getValue(data, 'operation'))
+					{
+						changeValue('bufferOperation', getValue(data, 'operation'));
+					}
+					
+					changeValue('operation', null);
+					changeValue('value2', null);
+				}
+				else if (getValue(data, 'bufferOperation'))
+				{
+					switch(getValue(data, 'bufferOperation'))
+					{
+						case '/':
+						{
+							changeValue('value', Number(getValue(data, 'value')) / Number(getValue(data, 'bufferValue2')));
+							break;
+						}
+							
+						case '*':
+						{
+							changeValue('value', Number(getValue(data, 'value')) * Number(getValue(data, 'bufferValue2')));
+							break;
+						}
+							
+						case '-':
+						{
+							changeValue('value', Number(getValue(data, 'value')) - Number(getValue(data, 'bufferValue2')));
+							break;
+						}
+							
+						case '+':
+						{
+							changeValue('value', Number(getValue(data, 'value')) + Number(getValue(data, 'bufferValue2')));
+							break;
+						}
+							
+						default:
+						{
+							break;
+						}
+					}
+				}
+			}
+			
+			override public function yesFunction():void
+			{
+				if (numericStepper && valuesChanged)
+				{
+					if (getValue(data, 'value2'))
+					{
+						calculate();
+					}
+						
+					numericStepper.value = getValue(data, 'value') > numericStepper.minimum ? getValue(data, 'value') : numericStepper.minimum;
+					numericStepper.dispatchEvent(new Event('change'));
+				}
+				
+				Core.removeWindow(this);
+			}
+			
+			override public function clear():void
+			{
+				super.clear();
+				if (parent && numericStepper)
+				{
+					changeValue('value', '0');
+				}
+			}
+			
+			protected function backButton_clickHandler(event:MouseEvent):void
+			{
+				var targetValue:String = !getValue(data, 'operation') ? 'value' : 'value2';
+				
+				var value:String = getValue(data, targetValue);
+				if (value.length > 0)
+				{
+					changeValue(targetValue, value.slice( 0, -1 ));
+				}
+					
+			}
+			
+			protected function dotButton_clickHandler(event:MouseEvent):void
+			{
+				var targetValue:String = !getValue(data, 'operation') ? 'value' : 'value2';
+				
+				var value:String = getValue(data, targetValue);
+				if (value.indexOf('.') == -1)
+				{
+					changeValue(targetValue, value + '.');
+				}
+			}
+			
+			protected function equalButton_clickHandler(event:MouseEvent):void
+			{
+				if (getValue(data, 'value2') || getValue(data, 'bufferValue2'))
+				{
+					calculate();
+				}
+				else
+				{
+					changeValue('value', Number(getValue(data, 'value')));
+				}
+			}
+			
+			override protected function keyDownHandler(event:KeyboardEvent):void
+			{
+				switch(event.keyCode)
+				{
+					case 96:
+					{
+						addNumber(0);
+						break;
+					}
+						
+					case 97:
+					{
+						addNumber(1);
+						break;
+					}
+						
+					case 98:
+					{
+						addNumber(2);
+						break;
+					}
+					case 99:
+					{
+						addNumber(3);
+						break;
+					}
+						
+					case 100:
+					{
+						addNumber(4);
+						break;
+					}
+						
+					case 101:
+					{
+						addNumber(5);
+						break;
+					}
+					case 102:
+					{
+						addNumber(6);
+						break;
+					}
+					case 103:
+					{
+						addNumber(7);
+						break;
+					}
+						
+					case 104:
+					{
+						addNumber(8);
+						break;
+					}
+						
+					case 105:
+					{
+						addNumber(9);
+						break;
+					}
+						
+					case 8:
+					{
+						backButton_clickHandler(null);
+						break;
+					}
+						
+					case 13:
+					{
+						if (getValue(data, 'value2'))
+						{
+							equalButton_clickHandler(null);							
+						}
+						else
+						{
+							yesButton_clickHandler(null);
+						}
+						break;
+					}
+						
+					case 110:
+					{
+						dotButton_clickHandler(null);
+						break;
+					}
+						
+					case 111:
+					{
+						setOperation('/');
+						break;
+					}
+						
+					case 106:
+					{
+						setOperation('*');
+						break;
+					}
+						
+					case 109:
+					{
+						setOperation('-');
+						break;
+					}
+						
+					case 107:
+					{
+						setOperation('+');
+						break;
+					}
+				}
+				
+				super.keyDownHandler(event);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<extended:TextInput width="100%" height="{Core.size * Core.sizeMultiplier}" editable="false" widthInChars="5" textAlign="right" text="{getValue(data, 'value') + (getValue(data, 'operation') ? ' ' + getValue(data, 'operation') + ' ' : '') + getValue(data, 'value2')}"/>
+							<components:Button id="backButton" width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="◄" backgroundAlpha="0.2" color="{Core.blue}" click="backButton_clickHandler(event)"/>
+						</s:HGroup>  
+						
+						<s:VGroup gap="5">
+							<s:HGroup gap="5">
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="7" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="8" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="9" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="/" backgroundAlpha="0.2" color="{Core.blue}" click="{setOperation(event.target.label)}"/>
+							</s:HGroup>
+							<s:HGroup gap="5">
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="4" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="5" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="6" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="*" backgroundAlpha="0.2" color="{Core.blue}" click="{setOperation(event.target.label)}"/>
+							</s:HGroup>
+							<s:HGroup gap="5">
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="1" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="2" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="3" click="{addNumber(event.target.label)}"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="-" backgroundAlpha="0.2" color="{Core.blue}" click="{setOperation(event.target.label)}"/>
+							</s:HGroup>
+							<s:HGroup gap="5">
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="0" click="{addNumber(event.target.label)}"/>
+								<components:Button id="dotButton" width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="." backgroundAlpha="0.2" color="{Core.blue}" click="dotButton_clickHandler(event)"/>
+								<components:Button id="equalButton" width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="=" backgroundAlpha="0.2" color="{Core.blue}" click="equalButton_clickHandler(event)"/>
+								<components:Button width="{Core.size * 1.7 * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" label="+" backgroundAlpha="0.2" color="{Core.blue}" click="{setOperation(event.target.label)}"/>
+							</s:HGroup>							
+						</s:VGroup>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+</components:Window>

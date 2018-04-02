@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="display_off"
+				   label="size of_screen"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   cancelButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="true"
+		   
+				   windowsStackEnabled="false"
+				   createViewportButton="false"
+				   
+				   focusComponentsArray="{[widthNumericStepper,
+				   heightNumericStepper,
+				   yesButton]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			override public function yesFunction():void
+			{
+				/*if (Core.getObjectLength(requestParams) > 0 || confirmPasswordTextInput.text.length > 0)
+				{
+					if (checkPasswords())
+					{
+						requestParams.item_id = data ? data.@item_id : null;
+						setHttpService.send(requestParams);
+					}
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}*/
+			}
+			
+			protected function widthNumericStepper_changeHandler(event:Event):void
+			{
+				Core.application.width = widthNumericStepper.value;
+			}
+			
+			protected function heightNumericStepper_changeHandler(event:Event):void
+			{
+				Core.application.height = heightNumericStepper.value;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group>
+			<components:FieldSet top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:HGroup paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:VGroup>
+							<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['width'])}:"/>
+							<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['height'])}:"/>
+						</s:VGroup>
+						
+						<s:VGroup gap="5">
+							<extended:NumericStepper id="widthNumericStepper" width="100" minimum="800" maximum="1920" value="{Core.application.width}" height="{Core.size * Core.sizeMultiplier}" change="widthNumericStepper_changeHandler(event)"/>
+							<extended:NumericStepper id="heightNumericStepper" width="100" minimum="600" maximum="1080" value="{Core.application.height}" height="{Core.size * Core.sizeMultiplier}" change="heightNumericStepper_changeHandler(event)"/>
+						</s:VGroup>
+					</s:HGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

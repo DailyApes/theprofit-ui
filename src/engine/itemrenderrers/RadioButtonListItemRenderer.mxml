@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				width="100%"
+				autoDrawBackground="false">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+		]]>
+	</fx:Script>
+	
+	<s:RadioButton width="100%" maxWidth="200" minWidth="0" height="{Core.size * Core.sizeMultiplier}" selected="{data.selected == true}" label="{label}" change="{data.selected = event.target.selected}"/>		
+	
+</s:ItemRenderer>

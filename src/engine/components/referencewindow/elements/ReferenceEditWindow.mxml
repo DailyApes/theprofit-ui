@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{getLabel(action, mode) + ' ' + (itemName.length > 0 ? itemName : 'of_record')}"
+				   
+				   yesButtonEnabled="{textInput.text.length > 0}"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   focusTarget="{textInput}"
+				   
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.events.TextOperationEvent;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			import engine.storages.DataStorage;
+			
+			[Bindable]
+			public var groupsDataProvider:XMLList;
+			
+			[Bindable]
+			public var targetColumn:String;
+			
+			[Bindable]
+			public var itemName:String;
+			
+			[Bindable]
+			public var targetDataStorage:DataStorage;
+			
+			[Bindable]
+			public var parentWindowClass:Class;
+			
+			[Bindable]
+			public var groupWindowClassName:String = 'ReferenceEditGroupWindow';
+			
+			override public function yesFunction():void
+			{
+				if (action == 'adding')
+				{
+					Core.dispatchAllComponents(this);
+				}
+				
+				if (Core.getObjectLength(requestParams) > 0) 
+				{
+					requestParams.item_id = data ? data['@item_id'] : null;
+					setHttpService.send(requestParams);
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (parentWindowClass && parentWindow is parentWindowClass)
+					{
+						parentWindow.changeValue(targetColumn, setHttpService.lastResult.item.@item_id, true, false, true);
+						
+						if (targetDataStorage)
+						{
+							targetDataStorage.refresh();
+						}
+					}
+					else
+					{
+						if (action == 'adding')
+						{
+							parentWindow['dataGridSet'].isNewRecord = true;
+						}
+						
+						parentWindow.reloadFunction();						
+					}
+					
+					Core.removeWindow(this);
+				}
+			}
+			
+			protected function textArea_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('description', event.target.text, action == 'adding');
+				progressBarRefresh();
+			}
+			
+			private function progressBarRefresh():void
+			{
+				progressBar.setProgress(textArea.text.length, textArea.maxChars);
+			}
+			
+			override public function dataChangeFunction():void
+			{
+				callLater(progressBarRefresh);
+			}
+			
+			override protected function afterChangeValue():void
+			{
+				progressBarRefresh();
+			}
+			
+			protected function addGroupButton_clickHandler(event:MouseEvent):void
+			{
+				var window:Window = Core.launcher.launch(groupWindowClassName, null, this, ['adding']);
+				
+				if (!getValue(data, 'group_id') && groupComboBox.textInput.text.length > 0)
+				{
+					window.changeValue('name', groupComboBox.textInput.text, true, false, true);
+				}
+				else
+				{
+					window.changeValue('name', Core.translate.to(['she_new group']), true, false, true);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<s:VGroup gap="5">
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['group'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['name'])}:" verticalAlign="middle"/>
+							</s:VGroup>
+							
+							<s:VGroup gap="5">
+								<extended:ComboBox id="groupComboBox" height="{Core.size * Core.sizeMultiplier}" labelField="@name" translateColumns="@name" dataProvider="{Core.toArrayList(groupsDataProvider)}" selectedValue="{getValue(data, 'group_id')}" change="{changeValue('group_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
+								<extended:TextInput id="textInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'name')}" change="{changeValue('name', event.target.text, action == 'adding')}" creationComplete="{event.target.setFocus()}"/>
+							</s:VGroup>
+							
+							<components:Button id="addGroupButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="plus" click="addGroupButton_clickHandler(event)"/>
+						</s:HGroup>
+						
+						<extended:TextArea id="textArea" width="100%" height="100%" minHeight="{Core.size * Core.sizeMultiplier}" verticalAlign="top" maxChars="250" text="{getValue(data, 'description')}" change="textArea_changeHandler(event)"/>
+						
+						<mx:ProgressBar id="progressBar" width="100%" paddingLeft="-1" paddingRight="-1" mode="manual" minimum="0" label="{Core.translate.to(['characters_'])}: %1 {Core.translate.to(['of'])} %2 (%3%%)" labelPlacement="center"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

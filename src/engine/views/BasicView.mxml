@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:components="engine.components.*"
+		creationComplete="creationCompleteHandler(event)">
+	
+	<fx:Declarations>
+		<s:HTTPService id="getHttpService"
+					   method="POST"
+					   url="{CoreMobile.serverUrl + (CoreMobile.yii ? '/?r=' : '/') + (getHttpServiceModule.length > 0 ? getHttpServiceModule : CoreMobile.getHttpServiceModule) + (getHttpServiceModule.length > 0 || CoreMobile.getHttpServiceModule.length > 0 ? '/' : '') + getHttpServiceController + (getHttpServiceAction.length > 0 ? '/' : '') +  getHttpServiceAction}"
+					   requestTimeout="{CoreMobile.requestTimeout}"
+					   invoke="getHttpService_invokeHandler(event)"
+					   result="getHttpService_resultHandler(event)"
+					   fault="CoreMobile.httpService_faultHandler(event); getHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+		
+		<s:HTTPService id="setHttpService"
+					   method="POST"
+					   url="{CoreMobile.serverUrl + (CoreMobile.yii ? '/?r=' : '/') + (setHttpServiceModule.length > 0 ? setHttpServiceModule : CoreMobile.setHttpServiceModule) + (setHttpServiceModule.length > 0 || CoreMobile.setHttpServiceModule.length > 0 ? '/' : '') + setHttpServiceController + (setHttpServiceAction.length > 0 ? '/' : '') +  setHttpServiceAction}"
+					   requestTimeout="{CoreMobile.requestTimeout}"
+					   invoke="setHttpService_invokeHandler(event)"
+					   result="setHttpService_resultHandler(event)"
+					   fault="CoreMobile.httpService_faultHandler(event); setHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.InvokeEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.Group;
+			
+			import engine.core.CoreMobile;
+			
+			
+			[Bindable]
+			public var closeButtonEnabled:Boolean;
+			[Bindable]
+			public var homeButtonEnabled:Boolean;
+			[Bindable]
+			public var logoutButtonEnabled:Boolean;
+			[Bindable]
+			public var backButtonEnabled:Boolean = true;
+			
+			[Bindable]
+			public var yesButtonEnabled:Boolean;
+			[Bindable]
+			public var noButtonEnabled:Boolean;
+			[Bindable]
+			public var reloadButtonEnabled:Boolean = true;
+			
+			[Bindable]
+			public var bottomActionBarEnabled:Boolean = true;
+			
+			[Bindable]
+			public var bottomActionBarTitle:String = '';
+			
+			[Bindable]
+			public var getHttpServiceAction:String = '';
+			[Bindable]
+			public var setHttpServiceAction:String = '';
+			
+			[Bindable]
+			public var getHttpServiceModule:String = '';
+			[Bindable]
+			public var setHttpServiceModule:String = '';
+			
+			[Bindable]
+			public var getHttpServiceController:String = '';
+			[Bindable]
+			public var setHttpServiceController:String = '';
+			
+			[Bindable]
+			public var logoutHttpServiceAction:String = '';
+			[Bindable]
+			public var logoutHttpServiceModule:String = '';
+			[Bindable]
+			public var logoutHttpServiceController:String = '';
+			
+			private var _inProgress:Boolean;
+			
+			[Bindable]
+			public var requestParams:Object = new Object();
+			[Bindable]
+			public var selectedIndex:Number;
+			
+			[Bindable]
+			public var disableContent:Boolean;
+			
+			[Bindable]
+			public var content:Group = new Group();
+			
+			[Bindable]
+			public var dataProvider:Object;
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				content.percentWidth = 100;
+				content.percentHeight = 100;
+				
+				contentHolder.addElementAt(content, 1);
+				
+				creationCompleteFunction();
+			}
+			
+			public function creationCompleteFunction():void
+			{
+				//override function
+			}
+			
+			[Bindable]
+			public function set inProgress(value:Boolean):void
+			{
+				_inProgress = value;
+				
+				if (inProgress)
+				{
+					if (disableContent)
+					{
+						content.enabled = false;						
+					}
+				}
+				else
+				{
+					content.enabled = true;
+				}
+			}
+			
+			public function get inProgress():Boolean
+			{
+				return _inProgress;
+			}
+			
+			protected function reloadButton_clickHandler(event:MouseEvent):void
+			{
+				reloadFunction();
+			}
+			
+			protected function getHttpService_invokeHandler(event:mx.rpc.events.InvokeEvent):void
+			{
+				inProgress = true;
+				getHttpService_invokeFunction();
+			}
+			
+			public function getHttpService_invokeFunction():void
+			{
+				//override function
+			}
+			
+			protected function getHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				getHttpService_resultFunction();
+			}
+			
+			public function getHttpService_resultFunction():void
+			{
+				//override function
+			}
+			
+			protected function getHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+				getHttpService_faultFunction();
+			}
+			
+			public function getHttpService_faultFunction():void
+			{
+				//override function
+			}
+			
+			protected function setHttpService_invokeHandler(event:mx.rpc.events.InvokeEvent):void
+			{
+				inProgress = true;
+				setHttpService_invokeFunction();
+			}
+			
+			public function setHttpService_invokeFunction():void
+			{
+				//override function
+			}
+			
+			protected function setHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				setHttpService_resultFunction();
+			}
+			
+			public function setHttpService_resultFunction():void
+			{
+				//override function
+			}
+			
+			protected function setHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+				setHttpService_faultFunction();
+			}
+			
+			public function setHttpService_faultFunction():void
+			{
+				//override function
+			}
+			
+			public function reloadFunction():void
+			{
+				if (getHttpServiceController.length > 0)
+				{
+					getHttpService.send(requestParams);
+				}
+			}
+			
+			public function saveFunction():void
+			{
+				if (setHttpServiceController.length > 0)
+				{
+					setHttpService.send(requestParams);
+				}
+			}
+			
+			protected function noButton_clickHandler(event:MouseEvent):void
+			{
+				if (noButtonEnabled)
+				{
+					noFunction();
+				}
+			}
+			
+			public function noFunction():void
+			{
+				//for override
+				navigationGroup.backButton_clickHandler(null);
+			}
+			
+			protected function yesButton_clickHandler(event:MouseEvent):void
+			{
+				if (yesButtonEnabled)
+				{
+					yesFunction();
+				}
+			}
+			
+			public function yesFunction():void
+			{
+				//for override
+				navigationGroup.backButton_clickHandler(null);
+			}
+		]]>
+	</fx:Script>
+	
+	<s:VGroup id="contentHolder" width="100%" height="100%">
+		<s:ActionBar width="100%" title="{title}">
+			<s:actionContent>
+				<components:NavigationGroup id="navigationGroup" closeButtonEnabled="{closeButtonEnabled}" homeButtonEnabled="{homeButtonEnabled}" logoutButtonEnabled="{logoutButtonEnabled}" backButtonEnabled="{backButtonEnabled}" logoutHttpServiceAction="{logoutHttpServiceAction}" logoutHttpServiceModule="{logoutHttpServiceModule}" logoutHttpServiceController="{logoutHttpServiceController}"/>
+			</s:actionContent>
+		</s:ActionBar>
+		
+		
+		<s:Label id="label" width="100%" textAlign="center"/>
+		<s:ActionBar id="bottomActionBar" width="100%" title="{bottomActionBarTitle.length > 0 ? bottomActionBarTitle : (reloadButtonEnabled ? CoreMobile.translate.to(['обновить']) : CoreMobile.translate.to(['подтверждение']))}" includeInLayout="{bottomActionBarEnabled}" visible="{bottomActionBarEnabled}">
+			<s:actionContent>
+				<s:Button id="yesButton" visible="{yesButtonEnabled}" includeInLayout="{yesButtonEnabled}" icon="@Embed('file:////assets/icons/white/checkmark_48.png')" click="yesButton_clickHandler(event)"/>
+				<s:Button id="noButton" visible="{noButtonEnabled}" includeInLayout="{noButtonEnabled}" icon="@Embed('file:////assets/icons/white/delete_48.png')" click="noButton_clickHandler(event)"/>
+				<s:Button id="reloadButton" visible="{reloadButtonEnabled}" includeInLayout="{reloadButtonEnabled}" icon="@Embed('file:////assets/icons/white/reload_48.png')" click="reloadButton_clickHandler(event)"/>
+			</s:actionContent>
+		</s:ActionBar>	
+	</s:VGroup>
+	
+</s:View>

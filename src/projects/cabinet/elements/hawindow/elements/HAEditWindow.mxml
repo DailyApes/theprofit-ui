@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{getLabel(action, mode) + ' of_record'}"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="false"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   setHttpServiceController="{parentWindow.mode !== 'planning' ? 'hajournal' : 'haplanning'}"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   
+				   coverGroupEnabled="{numChildrenWindows > 0}"
+				   
+				   focusTarget="{contributionComboBox}"
+				   
+				   focusComponentsArray="{[doNotConsiderCheckBox,
+				   periodicityComboBox,
+				   everyNDaysNumericStepper,
+				   repeatsNumericStepper,
+				   walletComboBox,
+				   contactComboBox,
+				   contributionComboBox,
+				   quantityNumericStepper,
+				   priceNumericStepper,
+				   sumNumericStepper,
+				   continueButton]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.CalendarLayoutChangeEvent;
+			
+			import spark.collections.SortField;
+			import spark.events.TextOperationEvent;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			override public function yesFunction():void
+			{
+				if (!getValue(data, 'date'))
+				{
+					dateField.errorString = Core.translate.to(['specify_the date_']);
+					callLater(dateField.setFocus);
+					
+					continueAction = false;
+				}
+				else if (!getValue(data, 'wallet_id'))
+				{
+					walletComboBox.errorString = Core.translate.to(['select wallet']);
+					callLater(walletComboBox.setFocus);
+					
+					continueAction = false;
+				}
+				else if (!getValue(data, 'contact_id'))
+				{
+					contactComboBox.errorString = Core.translate.to(['select contact_']);
+					callLater(contactComboBox.setFocus);
+					
+					continueAction = false;
+				}
+				else if (!getValue(data, 'contribution_id'))
+				{
+					contributionComboBox.errorString = Core.translate.to(['select contribution_']);
+					callLater(contributionComboBox.setFocus);
+					
+					continueAction = false;
+				}
+				else if (!getValue(data, 'price'))
+				{
+					priceNumericStepper.errorString = Core.translate.to(['specify_the price_']);
+					callLater(priceNumericStepper.setFocus);
+					
+					continueAction = false;
+				}
+				else if (!getValue(data, 'sum'))
+				{
+					sumNumericStepper.errorString = Core.translate.to(['specify_the sum_']);
+					callLater(sumNumericStepper.setFocus);
+					
+					continueAction = false;
+				}
+				else
+				{
+					if (Core.getObjectLength(requestParams) > 0) 
+					{
+						requestParams.item_id = data ? data['@item_id'] : null;
+						
+						if (parentWindow.mode == 'planning')
+						{
+							if (getValue(data, 'periodicity_id') == 1)
+							{
+								requestParams.repeats = 1;
+							}
+						}
+						
+						requestParams.sum = null;
+						setHttpService.send(requestParams);
+					}
+					else
+					{
+						Core.removeWindow(this);
+					}					
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (action == 'adding')
+					{
+						parentWindow['dataGridSet'].isNewRecord = true;
+					}
+					
+					parentWindow.reloadFunction();
+					
+					if (continueAction)
+					{
+						continueAction = false;
+						
+						changeValue('contribution_id', 0, true, false, false);
+						changeValue('repeats', 0, true, false, false);
+						changeValue('quantity', 1, true, false, false);
+						changeValue('price', 0, true, false, false);
+						changeValue('note', '', true, false, true);
+						
+						contributionComboBox.setFocus();
+					}
+					else
+					{
+						Core.removeWindow(this);
+					}
+				}
+			}
+			
+			protected function textArea_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('note', event.target.text, action == 'adding');
+			}
+			
+			override public function dataChangeFunction():void
+			{
+				callLater(progressBarRefresh);
+			}
+			
+			override protected function afterChangeValue():void
+			{
+				progressBarRefresh();
+			}
+			
+			private function progressBarRefresh():void
+			{
+				progressBar.setProgress(String(getValue(data, 'note')).length, textArea.maxChars);
+			}
+			
+			protected function dateField_changeHandler(event:CalendarLayoutChangeEvent):void
+			{
+				if (dateField.selectedDate)
+				{
+					changeValue('date', Core.dateConvert(dateField.selectedDate), action == 'adding');
+				}
+			}
+			
+			protected function directionRadionButtonGroup_changeHandler():void
+			{
+				callLater(function():void
+				{
+					changeValue('direction', Number(incomeRadionButton.selected), action == 'adding');					
+				});
+			}
+			
+			protected function quantityNumericStepper_changeHandler(event:Event):void
+			{
+				changeValue('quantity', event.target.value, action == 'adding');
+				changeValue('sum', event.target.value * getValue(data, 'price'), action == 'adding');
+			}
+			
+			
+			protected function priceNumericStepper_changeHandler(event:Event):void
+			{
+				changeValue('price', event.target.value, action == 'adding');
+				changeValue('sum', event.target.value * getValue(data, 'quantity'), action == 'adding');
+			}
+			
+			protected function sumNumericStepper_changeHandler(event:Event):void
+			{
+				changeValue('sum', event.target.value, action == 'adding');
+				changeValue('price', event.target.value / getValue(data, 'quantity'), action == 'adding');
+			}
+			
+			override public function clear():void
+			{
+				super.clear();
+				
+				if (parent)
+				{
+					changeValue('quantity', 1, true, false, false);					
+				}
+			}
+			
+			private function setWeekday(index:Number, value:Boolean):void
+			{
+				var array:Array = String(getValue(data, 'weekdays')).split(',');
+				array[index] = Number(value);
+				
+				changeValue('weekdays', array.toString(), action == 'adding');
+			}
+			
+			protected function sumNumericStepper_keyDownHandler(event:KeyboardEvent):void
+			{
+				if (event.keyCode == 13 && !continueButton.visible)
+				{
+					yesButton.setFocus();
+				}
+			}
+			
+			protected function continueButton_clickHandler(event:MouseEvent):void
+			{
+				continueAction = true;
+				
+				yesButton_clickHandler(null);
+			}
+			
+			protected function addWalletButton_clickHandler(event:MouseEvent):void
+			{
+				var window:Window = Core.launcher.launch('HAWalletsReferenceEditWindow', null, this, ['adding']);
+				window.changeValue('group_id', 1, true, false, false);
+				
+				if (!getValue(data, 'wallet_id') && walletComboBox.textInput.text.length > 0)
+				{
+					window.changeValue('name', walletComboBox.textInput.text, true, false, false);	
+				}
+				else
+				{
+					window.changeValue('name', Core.translate.to(['he_new wallet']), true, false, false);
+				}
+				
+				window.changeValue('description', '', true, false, true);
+			}
+			
+			protected function addContactButton_clickHandler(event:MouseEvent):void
+			{
+				var window:Window = Core.launcher.launch('HAContactsReferenceEditWindow', null, this, ['adding']);
+				window.changeValue('group_id', 1, true, false, false);
+				
+				if (!getValue(data, 'contact_id') && contactComboBox.textInput.text.length > 0)
+				{
+					window.changeValue('name', contactComboBox.textInput.text, true, false, false);	
+				}
+				else
+				{
+					window.changeValue('name', Core.translate.to(['he_new contact']), true, false, false);
+				}
+				
+				window.changeValue('description', '', true, false, true);
+			}
+			
+			protected function addContributionButton_clickHandler(event:MouseEvent):void
+			{
+				var window:Window = Core.launcher.launch('HAContributionsReferenceEditWindow', null, this, ['adding']);
+				window.changeValue('group_id', 1, true, false, false);
+				
+				if (!getValue(data, 'contribution_id') && contributionComboBox.textInput.text.length > 0)
+				{
+					window.changeValue('name', contributionComboBox.textInput.text, true, false, false);	
+				}
+				else
+				{
+					window.changeValue('name', Core.translate.to(['she_new contribution']), true, false, false);
+				}
+				
+				window.changeValue('description', '', true, false, true);
+			}
+			
+			protected function walletReferenceButton_clickHandler(event:MouseEvent):void
+			{
+				Core.launcher.launch('HAWalletsReferenceWindow', data, this);
+			}
+			
+			protected function contactReferenceButton_clickHandler(event:MouseEvent):void
+			{
+				Core.launcher.launch('HAContactsReferenceWindow', data, this);
+			}
+			
+			protected function contributionReferenceButton_clickHandler(event:MouseEvent):void
+			{
+				Core.launcher.launch('HAContributionsReferenceWindow', data, this);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<s:VGroup gap="5">
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['date'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" text="{Core.translate.to(['weekdays'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" text="{Core.translate.to(['repeats_of'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['wallet'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['contact'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['contribution'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['quantity'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['price'])}:" verticalAlign="middle"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['sum'])}:" verticalAlign="middle"/>
+							</s:VGroup>
+							
+							<s:VGroup width="100%" gap="5">
+								<s:HGroup width="100%" gap="5" verticalAlign="middle">
+									<extended:DateField id="dateField" height="{Core.size * Core.sizeMultiplier}" todayColor="{Core.blue}" yearNavigationEnabled="true" formatString="YYYY-MM-DD" text="{getValue(data, 'date')}" change="dateField_changeHandler(event)"/>
+									
+									<s:HGroup width="100%" horizontalAlign="right">
+										<extended:CheckBox id="doNotConsiderCheckBox" visible="{parentWindow.mode !== 'planning'}" includeInLayout="{parentWindow.mode !== 'planning'}" label="{Core.translate.to(['do_not consider'])}" selected="{Core.toBoolean(getValue(data, 'do_not_consider'))}" change="{changeValue('do_not_consider', Number(event.target.selected), action == 'adding')}"/>
+										
+										<extended:ComboBox id="periodicityComboBox" width="100%" minWidth="0" widthInChars="5" height="{Core.size * Core.sizeMultiplier}" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" labelField="@name" translateColumns="@name" dataProvider="{Core.toArrayList(Core.data.periodicity.dataProvider)}" selectedIndex="0" defaultSelectedIndex="0" selectedValue="{getValue(data, 'periodicity_id')}" change="{changeValue('periodicity_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
+									</s:HGroup>
+
+									<extended:NumericStepper id="everyNDaysNumericStepper" width="{Core.size * Core.sizeMultiplier * 2 + 5}" height="{Core.size * Core.sizeMultiplier}" visible="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') == 7}" minimum="1" maximum="999999999" stepSize="1" value="{getValue(data, 'every_n_days')}" change="{changeValue('every_n_days', event.target.value, action == 'adding')}"/>
+								</s:HGroup>
+
+								<s:HGroup height="{Core.size * Core.sizeMultiplier}" enabled="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') == 2}" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" verticalAlign="middle" gap="5">
+									<extended:CheckBox label="{Core.translate.to(['mon'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 1))}" change="{setWeekday(1, event.target.selected)}"/>
+									<extended:CheckBox label="{Core.translate.to(['tue'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 2))}" change="{setWeekday(2, event.target.selected)}"/>
+									<extended:CheckBox label="{Core.translate.to(['wed'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 3))}" change="{setWeekday(3, event.target.selected)}"/>
+									<extended:CheckBox label="{Core.translate.to(['thu'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 4))}" change="{setWeekday(4, event.target.selected)}"/>
+									<extended:CheckBox label="{Core.translate.to(['fri'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 5))}" change="{setWeekday(5, event.target.selected)}"/>
+									<extended:CheckBox label="{Core.translate.to(['sat'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 6))}" change="{setWeekday(6, event.target.selected)}"/>
+									<extended:CheckBox label="{Core.translate.to(['sun'])}" selected="{Core.toBoolean(Core.getItem(String(getValue(data, 'weekdays')).split(','), 0))}" change="{setWeekday(0, event.target.selected)}"/>
+									
+									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>
+								</s:HGroup>
+								
+								<s:HGroup width="100%" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" gap="5">
+									<extended:NumericStepper id="repeatsNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" enabled="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') > 1}" minimum="0" maximum="999999999" stepSize="1" value="{getValue(data, 'repeats')}" change="{changeValue('repeats', event.target.value, action == 'adding')}"/>
+									<s:Label width="100%" height="{Core.size * Core.sizeMultiplier}" textAlign="right" text="{Core.translate.to(['it_processed'])}: {Core.toNumber(getValue(data, 'repeats_done'))}{getValue(data, 'repeats') == 0 ? '' : ' | ' + Core.translate.to(['left']) + ': ' + (getValue(data, 'repeats') - Core.toNumber(getValue(data, 'repeats_done')))}" verticalAlign="middle"/>
+									
+									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5">
+									<extended:ComboBox id="walletComboBox" width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" labelField="@name" dataProvider="{Core.toArrayList(Core.data.haWallets.dataProvider, '@name', [new SortField('@name', false, false)])}" selectedValue="{getValue(data, 'wallet_id')}" change="{changeValue('wallet_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}">
+										<extended:layout>
+											<s:VerticalLayout gap="0" horizontalAlign="contentJustify" requestedRowCount="-1" requestedMinRowCount="1" requestedMaxRowCount="20"/>
+										</extended:layout>
+									</extended:ComboBox>
+									<components:Button id="addWalletButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="plus" click="addWalletButton_clickHandler(event)"/>
+									<components:Button id="walletReferenceButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="magnifier" click="walletReferenceButton_clickHandler(event)"/>
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5">
+									<extended:ComboBox id="contactComboBox" width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" labelField="@name" dataProvider="{Core.toArrayList(Core.data.haContacts.dataProvider, '@name', [new SortField('@name', false, false)])}" selectedValue="{getValue(data, 'contact_id')}" change="{changeValue('contact_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}">
+										<extended:layout>
+											<s:VerticalLayout gap="0" horizontalAlign="contentJustify" requestedRowCount="-1" requestedMinRowCount="1" requestedMaxRowCount="20"/>
+										</extended:layout>
+									</extended:ComboBox>
+									<components:Button id="addContactButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="plus" click="addContactButton_clickHandler(event)"/>
+									<components:Button id="contactReferenceButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="magnifier" click="contactReferenceButton_clickHandler(event)"/>
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5">
+									<extended:ComboBox id="contributionComboBox" width="100%" minWidth="200" height="{Core.size * Core.sizeMultiplier}" labelField="@name" dataProvider="{Core.toArrayList(Core.data.haContributions.dataProvider, '@name', [new SortField('@name', false, false)])}" selectedValue="{getValue(data, 'contribution_id')}" change="{changeValue('contribution_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}" creationComplete="{event.target.setFocus()}">
+										<extended:layout>
+											<s:VerticalLayout gap="0" horizontalAlign="contentJustify" requestedRowCount="-1" requestedMinRowCount="1" requestedMaxRowCount="20"/>
+										</extended:layout>
+									</extended:ComboBox>
+									<components:Button id="addContributionButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="plus" click="addContributionButton_clickHandler(event)"/>
+									<components:Button id="contributionReferenceButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="magnifier" click="contributionReferenceButton_clickHandler(event)"/>
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5" verticalAlign="middle">
+									<extended:NumericStepper id="sumNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="0" maximum="999999999" stepSize="1" value="{getValue(data, 'sum')}" keyDown="sumNumericStepper_keyDownHandler(event)" change="sumNumericStepper_changeHandler(event)"/>
+									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['sum', sumNumericStepper])}"/>
+									
+									<s:Label width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" text="|" textAlign="center" verticalAlign="middle"/>
+									
+									<s:RadioButton id="incomeRadionButton" groupName="directionRadionButtonGroup" selected="{Core.toBoolean(getValue(data, 'direction'))}" label="{Core.translate.to(['income'])}" change="directionRadionButtonGroup_changeHandler()"/>
+									<s:RadioButton id="outcomeRadionButton" groupName="directionRadionButtonGroup" selected="{!Core.toBoolean(getValue(data, 'direction'))}" label="{Core.translate.to(['outcome'])}" change="directionRadionButtonGroup_changeHandler()"/>
+									
+									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5">
+									<extended:NumericStepper id="quantityNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="1" maximum="999999999" stepSize="1" value="{getValue(data, 'quantity')}" change="quantityNumericStepper_changeHandler(event)"/>
+									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['quantity', quantityNumericStepper])}"/>
+									
+									<!--<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['unit'])}:" verticalAlign="middle"/>
+									<s:Spacer width="100%"/>
+									<extended:ComboBox width="80" height="{Core.size * Core.sizeMultiplier}" labelField="@name" translateColumns="@name" prompt="{Core.translate.to(['unit'])}"/>
+									
+									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>-->
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5">
+									<extended:NumericStepper id="priceNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="0" maximum="999999999" stepSize="1" value="{getValue(data, 'price')}" change="priceNumericStepper_changeHandler(event)"/>
+									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['price', priceNumericStepper])}"/>
+									
+									<!--<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['currency'])}:" verticalAlign="middle"/>
+									<s:Spacer width="100%"/>
+									<extended:ComboBox width="80" height="{Core.size * Core.sizeMultiplier}" labelField="@name" translateColumns="@name" prompt="{Core.translate.to(['currency'])}"/>
+									
+									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>-->
+								</s:HGroup>
+							</s:VGroup>
+						</s:HGroup>
+						
+						<extended:TextArea id="textArea" width="100%" height="100%" minHeight="{Core.size * Core.sizeMultiplier}" verticalAlign="top" maxChars="250" text="{getValue(data, 'note')}" change="textArea_changeHandler(event)"/>
+						
+						<mx:ProgressBar id="progressBar" width="100%" paddingLeft="-1" paddingRight="-1" mode="manual" minimum="0" label="{Core.translate.to(['characters_'])}: %1 {Core.translate.to(['of'])} %2 (%3%%)" labelPlacement="center"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+	<components:leftAddon>
+		<components:Button id="continueButton" visible="{action == 'adding' &amp;&amp; !mode}" includeInLayout="{action == 'adding' &amp;&amp; !mode}" paddingWidth="5" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" labelColor="{Core.white}" label="{Core.translate.to(['add and continue'])}" click="continueButton_clickHandler(event)"/>
+	</components:leftAddon>
+</components:Window>

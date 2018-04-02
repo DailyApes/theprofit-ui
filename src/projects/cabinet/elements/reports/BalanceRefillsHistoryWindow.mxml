@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="wallet"
+				   label="balance_refills_history"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   menu="{new ArrayCollection()}"
+				   
+				   autoreloadEnabled="true"
+				   
+				   getHttpServiceController="balancerefillshistoryvk"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			import spark.collections.SortField;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			import flashx.textLayout.container.ScrollPolicy;
+			
+			override public function reloadFunction():void
+			{
+				if (dateSelector.initialised)
+				{
+					requestParams.from_date = dateSelector.fromDate ? Core.dateConvert(dateSelector.fromDate) : null;
+					requestParams.to_date = dateSelector.toDate ? Core.dateConvert(new Date(dateSelector.toDate.time + (24 * 60 * 60 * 1000 - 1))) : null;
+					super.reloadFunction();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:VGroup id="filtersGroup" width="200" height="100%" gap="5">
+				<components:DateSelector id="dateSelector" action="allTime" hoursEnabled="true" change="{reloadFunction()}"/>
+				<components:FieldSet width="100%" height="100%"/>
+			</s:VGroup>
+			
+			<components:DataGridSet id="dataGridSet"
+									left="5" right="5" top="5" bottom="5"
+									width="100%"
+									height="100%"
+									
+									translateColumns="@note"
+									
+									sortFields="{[new SortField('@date', true, false)]}"
+									
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{getHttpService.lastResult.item}"
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{!inProgress}"
+									
+									reloadFunction="{reloadFunction}">
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date'])}" dataField="@date" itemRenderer="engine.itemrenderrers.TimestampAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="120" headerText="{Core.translate.to(['paid of_votes_'])}" dataField="@votes" textAlign="right"/>
+					<mx:AdvancedDataGridColumn width="120" headerText="{Core.translate.to(['refill_amount'])}" dataField="@amount" textAlign="right"/>
+					<mx:AdvancedDataGridColumn headerText="{Core.translate.to(['note'])}" dataField="@note"/>
+				</components:columns>
+			</components:DataGridSet>
+		</s:HGroup>
+	</components:content>
+</components:Window>

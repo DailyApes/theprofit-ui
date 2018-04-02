@@ -1,0 +1,1554 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 creationComplete="creationCompleteHandler(event)"
+		 mouseDown="mouseDownHandler(event)"
+		 visible="false"
+		 keyDown="keyDownHandler(event)"
+		 tabChildren="{!coverGroupEnabled}"
+		 xmlns:components="engine.components.*">
+	
+	<fx:Declarations>
+		<s:HTTPService id="getHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (getHttpServiceModule.length > 0 ? getHttpServiceModule : Core.getHttpServiceModule) + (getHttpServiceModule.length > 0 || Core.getHttpServiceModule.length > 0 ? '/' : '') + getHttpServiceController + (getHttpServiceAction.length > 0 ? '/' : '') +  getHttpServiceAction}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="getHttpService_invokeHandler(event)"
+					   result="getHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); getHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+		
+		<s:HTTPService id="setHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (setHttpServiceModule.length > 0 ? setHttpServiceModule : Core.setHttpServiceModule) + (setHttpServiceModule.length > 0 || Core.setHttpServiceModule.length > 0 ? '/' : '') + setHttpServiceController + (setHttpServiceAction.length > 0 ? '/' : '') +  setHttpServiceAction}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="setHttpService_invokeHandler(event)"
+					   result="setHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); setHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			import mx.events.MenuEvent;
+			import mx.events.ResizeEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.InvokeEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.Group;
+			
+			import engine.assets.Icons;
+			import engine.core.Core;
+			import engine.storages.DataStorage;
+			
+			[Bindable]
+			public var doNotGroup:Boolean;
+			
+			[Bindable]
+			public var getHttpServiceAction:String = '';
+			[Bindable]
+			public var setHttpServiceAction:String = '';
+			
+			[Bindable]
+			public var getHttpServiceModule:String = '';
+			[Bindable]
+			public var setHttpServiceModule:String = '';
+			
+			[Bindable]
+			public var getHttpServiceController:String = '';
+			[Bindable]
+			public var setHttpServiceController:String = '';
+			
+			private var _content:UIComponent;
+			private var _leftAddon:UIComponent;
+			private var _rightAddon:UIComponent;
+			
+			private var _topAddon:UIComponent;
+			private var _buttonsAddon:UIComponent;
+			
+			[Bindable]
+			public var icon:String = '';
+			
+			[Bindable]
+			public var iconWidth:Number;
+			[Bindable]
+			public var iconHeight:Number;
+			
+			[Bindable]
+			public var label:String = 'header';
+			
+			[Bindable]
+			public var dockLabel:String;
+			
+			[Bindable]
+			public var maximizable:Boolean;
+			[Bindable]
+			public var minimizable:Boolean;
+			[Bindable]
+			public var closable:Boolean = true;
+			[Bindable]
+			public var dragable:Boolean = true;
+			
+			[Bindable]
+			public var headerEnabled:Boolean = true;
+			[Bindable]
+			public var infoButtonEnabled:Boolean;
+			[Bindable]
+			public var reloadButtonEnabled:Boolean;
+			[Bindable]
+			public var clearButtonEnabled:Boolean;
+			[Bindable]
+			public var cancelButtonEnabled:Boolean;
+			[Bindable]
+			public var addonSpacerEnabled:Boolean = true;
+			
+			[Bindable]
+			public var coverGroupEnabled:Boolean;
+			
+			[Bindable]
+			public var menuBarEnabled:Boolean = true;
+			
+			[Bindable]
+			public var autoreloadEnabled:Boolean;
+			
+			[Bindable]
+			public var clearOnDisable:Boolean = true;
+			
+			[Bindable]
+			public var yesButtonEnabled:Boolean;
+			[Bindable]
+			public var yesButtonIcon:String = '';
+			[Bindable]
+			public var yesButtonLabel:String = '';
+			[Bindable]
+			public var yesButtonTooltip:String = 'yes';
+			
+			[Bindable]
+			public var noButtonEnabled:Boolean;
+			[Bindable]
+			public var noButtonIcon:String = '';
+			[Bindable]
+			public var noButtonLabel:String = '';
+			[Bindable]
+			public var noButtonTooltip:String = 'no';
+			
+			public var focusTarget:UIComponent;
+			
+			[Bindable]
+			public var fronted:Boolean = true;
+			
+			public var centered:Boolean;
+			public var createViewportButton:Boolean = true;
+			
+			public var isPopupWindow:Boolean;
+			public var windowsStackEnabled:Boolean = true;
+			
+			private var resizing:Boolean;
+			
+			public var backupX:Number;
+			public var backupY:Number;
+			
+			[Bindable]
+			public var selectedColor:uint;
+			[Bindable]
+			public var unselectedColor:uint;
+			
+			[Bindable]
+			public var backgroundFillAlpha:Number = 0.95;
+			
+			private var _maximized:Boolean;
+			private var _minimized:Boolean;
+			private var _selected:Boolean;
+			
+			private var _resizable:Boolean = true;
+			
+			private var _inProgress:Boolean;
+			
+			[Bindable]
+			public var requestParams:Object = new Object();
+			[Bindable]
+			public var selectedIndex:Number;
+			
+			[Bindable]
+			public var yesOnKeyDown:Boolean = true;
+			[Bindable]
+			public var noOnKeyDown:Boolean = true;
+			
+			[Bindable]
+			public var disableContent:Boolean;
+			
+			[Bindable]
+			public var disableNavigation:Boolean = true;
+			
+			private var _dataStorage:DataStorage;
+			//private var _action:String = '';
+			
+			[Bindable]
+			public var action:String = '';
+
+			[Bindable]
+			public var continueAction:Boolean;
+			
+			private var _step:Number = 1;
+			private var _mode:String = '';
+			
+			[Bindable]
+			public var parentWindow:Window;
+			
+			private var _childSelected:Boolean;
+			
+			private var _data:Object;
+			
+			[Bindable]
+			public var autoreloadrRun:Boolean;
+			
+			[Bindable]
+			public var numChildrenWindows:Number = 0;
+			
+			[Bindable]
+			public var checkForOnline:Boolean = true;
+			[Bindable]
+			public var checkForErrors:Boolean;
+			
+			[Bindable]
+			public var valuesChanged:Boolean;
+			
+			private var _menu:Object;
+			
+			public var windowsStackCount:Number = 0;
+			
+			[Bindable]
+			public var refreshArray:Array = new Array();
+			
+			[Bindable]
+			public var focusComponentsArray:Array;
+			
+			[Bindable]
+			public var focusComponentsExceptionsArray:Array;
+			
+			//contextMenus
+			[Bindable]
+			public var minimizeContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var maximizeContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var closeContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var yesContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var noContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var clearContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var reloadContextMenuItem:ContextMenuItem;
+			
+			[Bindable]
+			public var customItems:Array = new Array();
+			
+			public var onСontextMenuSelect:Function;
+			
+			[Bindable]
+			public var trash:Object = new Object();
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				Core.application.addEventListener(ResizeEvent.RESIZE, topLevelApplication_resizeHadler);
+				resourceManager.addEventListener(Event.CHANGE, resourceManager_changeHandler);
+			}
+			
+			private function resourceManager_changeHandler(event:Event):void
+			{
+				menuFill();
+				
+				onResourceManagerChange();
+			}
+			
+			protected function onResourceManagerChange():void
+			{
+				//for override	
+			}
+			
+			[Bindable]
+			public function set content(value:UIComponent):void
+			{
+				_content = value;
+				
+				contentGroup.addElementAt(content, 3)
+				
+				content.percentWidth = 100;
+				content.percentHeight = 100;
+				
+				if (content)
+				{
+					content.addEventListener(FlexEvent.CREATION_COMPLETE, content_creationCompleteHadler);
+				}
+			}
+			
+			public function get content():UIComponent
+			{
+				return _content;
+			}
+			
+			[Bindable]
+			public function set data(value:Object):void
+			{
+				_data = value;
+				
+				dataChangeFunction();
+			}
+			
+			public function get data():Object
+			{
+				return _data;
+			}
+			
+			[Bindable]
+			public function set childSelected(value:Boolean):void
+			{
+				_childSelected = value;
+				
+				if (childSelected && parentWindow)
+				{
+					parentWindow.childSelected = true;
+				}
+			}
+			
+			public function get childSelected():Boolean
+			{
+				return _childSelected;
+			}
+			
+			[Bindable]
+			public function set step(value:Number):void
+			{
+				_step = value;
+				
+				focusOnTarget();
+			}
+			
+			public function get step():Number
+			{
+				return _step;
+			}
+			
+			[Bindable]
+			public function set mode(value:String):void
+			{
+				_mode = value;
+			}
+			
+			public function get mode():String
+			{
+				return _mode;
+			}
+			
+			public function dataChangeFunction():void
+			{
+				//for override
+			}
+			
+			[Bindable]
+			public function set leftAddon(value:UIComponent):void
+			{
+				_leftAddon = value;
+				
+				if (leftAddon) bottomGroup.addElementAt(leftAddon, 1);
+			}
+			
+			public function get leftAddon():UIComponent
+			{
+				return _leftAddon;
+			}
+			
+			[Bindable]
+			public function set rightAddon(value:UIComponent):void
+			{
+				_rightAddon = value;
+				
+				if (rightAddon)
+				{
+					if (leftAddon)
+					{
+						bottomGroup.addElementAt(rightAddon, 3);						
+					}
+					else
+					{
+						bottomGroup.addElementAt(rightAddon, 2);
+					}
+				}
+			}
+			
+			public function get rightAddon():UIComponent
+			{
+				return _rightAddon;
+			}
+			
+			[Bindable]
+			public function set topAddon(value:UIComponent):void
+			{
+				_topAddon = value;
+				
+				if (topAddon) topAddonGroup.addElement(topAddon);
+			}
+			
+			public function get topAddon():UIComponent
+			{
+				return _topAddon;
+			}
+			
+			[Bindable]
+			public function set buttonsAddon(value:UIComponent):void
+			{
+				_buttonsAddon = value;
+				
+				if (buttonsAddon) buttonsGroup.addElementAt(buttonsAddon, 0);
+			}
+			
+			public function get buttonsAddon():UIComponent
+			{
+				return _buttonsAddon;
+			}
+			
+			private function content_creationCompleteHadler(event:FlexEvent):void
+			{
+				visible = true;
+				
+				refresh();
+				
+				creationCompleteFunction();
+			}
+			
+			public function creationCompleteFunction():void
+			{
+				//for override
+			}
+			
+			private function topLevelApplication_resizeHadler(event:ResizeEvent):void
+			{
+				if (parent)
+				{
+					if (x <0)
+					{
+						x = 0;
+					}
+					
+					if (x + width > parent.width)
+					{
+						x = parent.width - width;
+					}
+					
+					if (y < 0)
+					{
+						y = 0;
+					}
+					
+					if (y + height > parent.height)
+					{
+						y = parent.height - height;
+					}
+				}
+				
+				checkSize();
+			}
+			
+			public function init():void
+			{
+				Core.selectWindow(this);
+				focusOnTarget();
+				
+				checkSize();
+				reloadFunction();
+				
+				menuFill();
+				
+				minimizeContextMenuItem = new ContextMenuItem('', false, true, true);
+				minimizeContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, minimizeContextMenuItem_menuItemSelectHandler);
+				
+				maximizeContextMenuItem = new ContextMenuItem('', false, true, true);
+				maximizeContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, maximizeContextMenuItem_menuItemSelectHandler);
+				
+				closeContextMenuItem = new ContextMenuItem('', true, true, true);
+				closeContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeContextMenuItem_menuItemSelectHandler);
+				
+				yesContextMenuItem = new ContextMenuItem('', false, true, true);
+				yesContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, yesContextMenuItem_menuItemSelectHandler);
+				
+				noContextMenuItem = new ContextMenuItem('', false, true, true);
+				noContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, noContextMenuItem_menuItemSelectHandler);
+				
+				clearContextMenuItem = new ContextMenuItem('', true, true, true);
+				clearContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, clearContextMenuItem_menuItemSelectHandler);
+				
+				reloadContextMenuItem = new ContextMenuItem('', false, true, true);
+				reloadContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, reloadContextMenuItem_menuItemSelectHandler);
+				
+				if (!contextMenu)
+				{
+					contextMenu = new ContextMenu();
+				}
+				contextMenu.addEventListener(ContextMenuEvent.MENU_SELECT, contextMenu_menuSelectHandler);
+
+				//for extended override
+			}
+			
+			public function disable():void
+			{
+				selected = false;
+				
+				if (parentWindow)
+				{
+					parentWindow.childrenWindows;
+					parentWindow = null;					
+				}
+				
+				while (childrenWindows.length > 0)
+				{
+					Core.removeWindow(childrenWindows[0]);
+				}
+				
+				checkSize();
+				
+				if (centered)
+				{
+					verticalCenter = 0;
+					horizontalCenter = 0;
+				}
+				
+				requestParams = new Object();
+				selectedIndex = NaN;
+				action = '';
+				data = null;
+				valuesChanged = false;
+				step = 1;
+				
+				if (clearOnDisable)
+				{
+					clear();					
+				}
+
+				minimizeContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, minimizeContextMenuItem_menuItemSelectHandler);
+				maximizeContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, maximizeContextMenuItem_menuItemSelectHandler);
+				closeContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeContextMenuItem_menuItemSelectHandler);
+				yesContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, yesContextMenuItem_menuItemSelectHandler);
+				noContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, noContextMenuItem_menuItemSelectHandler);
+				clearContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, clearContextMenuItem_menuItemSelectHandler);
+				reloadContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, reloadContextMenuItem_menuItemSelectHandler);
+
+				if (windowsStackEnabled)
+				{
+					Core.windowsStackCount = windowsStackCount;					
+				}
+
+				dispatchEvent(new Event('change'));
+				//for extended override
+			}
+			
+			private function contextMenu_menuSelectHandler(event:ContextMenuEvent):void 
+			{
+				if (!coverGroup.visible)
+				{
+					minimizeContextMenuItem.caption = minimizeButton.toolTip;
+					minimizeContextMenuItem.visible = minimizable;
+					
+					maximizeContextMenuItem.caption = maximizeButton.toolTip;
+					maximizeContextMenuItem.visible = maximizable;
+					
+					closeContextMenuItem.caption = closeButton.toolTip;
+					closeContextMenuItem.visible = closable;
+					
+					yesContextMenuItem.caption = yesButton.toolTip;
+					yesContextMenuItem.visible = yesButtonEnabled;
+					
+					noContextMenuItem.caption = noButton.toolTip;
+					noContextMenuItem.visible = noButtonEnabled;
+					
+					clearContextMenuItem.caption = clearButton.toolTip;
+					clearContextMenuItem.visible = clearButtonEnabled;
+					
+					reloadContextMenuItem.caption = reloadButton.toolTip;
+					reloadContextMenuItem.visible = reloadButtonEnabled || autoreloadEnabled;
+					
+					contextMenu.customItems = [minimizeContextMenuItem, maximizeContextMenuItem, closeContextMenuItem, yesContextMenuItem , noContextMenuItem, clearContextMenuItem, reloadContextMenuItem];
+					
+					for (var i:int = 0; i < customItems.length; i++) 
+					{
+						contextMenu.customItems.push(customItems[i]);
+					}
+					
+					if (Boolean(onСontextMenuSelect))
+					{
+						onСontextMenuSelect();	
+					}
+				}
+				else
+				{
+					contextMenu.customItems = [];
+				}
+			}
+
+			private function minimizeContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				minimizeButton_clickHandler(null);
+			}
+			
+			private function maximizeContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				maximizeButton_clickHandler(null);
+			}
+			
+			private function closeContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				closeButton_clickHandler(null);
+			}
+			
+			private function yesContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				yesFunction();
+			}
+			
+			private function noContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				noFunction();
+			}
+			
+			private function clearContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				clear();
+			}
+			
+			private function reloadContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				reloadButton_clickHandler(null);
+			}
+			
+			override public function set visible(value:Boolean):void
+			{
+				super.visible = value;
+				fronted = visible;
+			}
+			
+			[Bindable]
+			public function set selected(value:Boolean):void
+			{
+				_selected = value;
+				
+				if (selected)
+				{
+					minimized = false;						
+					
+					if (!isPopUp)
+					{
+						if (parentWindow && parentWindow.parent && parentWindow.parent['getElementIndex'](parentWindow) < parentWindow.parent.numChildren - 1)
+						{
+							parentWindow.parent['setElementIndex'](parentWindow, parentWindow.parent.numChildren - 1);
+							
+							for (var i:int = 0; i < parentWindow.childrenWindows.length; i++) 
+							{
+								if (parentWindow.childrenWindows[i] !== this)
+								{
+									parentWindow.childrenWindows[i].parent['setElementIndex'](parentWindow.childrenWindows[i], parentWindow.childrenWindows[i].parent.numChildren - 1);									
+								}
+							}
+						}
+						
+						if (parent && parent['getElementIndex'](this) < parent.numChildren - 1)
+						{
+							parent['setElementIndex'](this, parent.numChildren - 1);
+							
+							for (i = 0; i < childrenWindows.length; i++) 
+							{
+								childrenWindows[i].parent['setElementIndex'](childrenWindows[i], childrenWindows[i].parent.numChildren - 1);
+							}	
+						}
+						
+					}
+					setFocus();
+					refresh();
+					
+					focusOnTarget();
+				}
+				else if (this.stage)
+				{
+					this.stage.focus = null;
+				}
+				
+				if (parentWindow)
+				{
+					parentWindow.childSelected = selected ? true : false;
+				}
+				
+				onSelect();
+			}
+			
+			public function onSelect():void
+			{
+				//for override
+			}
+			
+			public function get selected():Boolean
+			{
+				return _selected;
+			}
+			
+			[Bindable]
+			public function set inProgress(value:Boolean):void
+			{
+				_inProgress = value;
+				
+				menuFill();
+				
+				if (inProgress)
+				{
+					if (disableContent)
+					{
+						content.enabled = false;						
+					}
+				}
+				else
+				{
+					content.enabled = true;
+				}
+			}
+			
+			public function get inProgress():Boolean
+			{
+				return _inProgress;
+			}
+			
+			[Bindable]
+			public function set minimized(value:Boolean):void
+			{
+				_minimized = value;
+				
+				menuFill();
+				
+				if (minimized)
+				{
+					visible = false;
+					selected = false;
+					Core.selectWindow();						
+				}
+				else
+				{
+					visible = true;
+					Core.selectWindow(this);
+				}
+			}
+			
+			public function get minimized():Boolean
+			{
+				return _minimized;
+			}
+			
+			[Bindable]
+			public function set maximized(value:Boolean):void
+			{
+				_maximized = value;
+				
+				menuFill();
+				Core.selectWindow(this);
+				
+				if (maximized)
+				{
+					if (!doNotGroup)
+					{
+						Core.application.viewport.grouped = false;
+					}
+					
+					horizontalCenter = NaN;
+					verticalCenter = NaN;
+					
+					/*if ()
+					{
+						backupX = x;
+						backupY = y;						
+					}*/
+					
+					left = 0;
+					right = 0;
+					top = 0;
+					bottom = 0;
+					
+					minimized = false;
+				}
+				else
+				{
+					left = NaN;
+					right = NaN;
+					top = NaN;
+					bottom = NaN;
+					
+					callLater(move, [backupX, backupY]);
+				}
+				
+				refresh();
+			}
+			
+			public function get maximized():Boolean
+			{
+				return _maximized;
+			}
+			
+			[Bindable]
+			public function set resizable(value:Boolean):void
+			{
+				_resizable = value;
+			}
+			
+			public function get resizable():Boolean
+			{
+				return _resizable;
+			}
+			
+			protected function iconImage_doubleClickHandler(event:MouseEvent):void
+			{
+				closeButton_clickHandler(null);
+			}
+			
+			protected function header_doubleClickHandler(event:MouseEvent):void
+			{
+				maximizeButton_clickHandler(null);
+			}
+			
+			protected function infoButton_clickHandler(event:MouseEvent):void
+			{
+				if (infoButtonEnabled)
+				{
+					infoFunction();
+				}
+			}
+			
+			public function infoFunction():void
+			{
+				//for override
+			}
+			
+			public function minimizeButton_clickHandler(event:MouseEvent):void
+			{
+				minimized = !minimized;
+				
+				Core.application.viewport.regroup();					
+			}
+			
+			public function maximizeButton_clickHandler(event:MouseEvent):void
+			{
+				if (maximizable)
+				{
+					maximized = !maximized;
+				}
+			}
+			
+			public function closeButton_clickHandler(event:MouseEvent):void
+			{
+				if (closable)
+				{
+					cancelFunction();
+				}
+			}
+			
+			public function cancelFunction():void
+			{
+				Core.removeWindow(this);
+				//for override
+			}
+			
+			protected function resizeButton_mouseDownHandler(event:MouseEvent):void
+			{
+				refresh();
+				
+				resizing = true;
+				verticalCenter = NaN;
+				horizontalCenter = NaN;
+				resizeButton.includeInLayout = false;
+				resizeButton.startDrag(false);
+			}
+			
+			protected function resizeButton_mouseUpHandler(event:MouseEvent):void
+			{
+				resizing = false;
+				resizeButton.includeInLayout = true;
+				resizeButton.stopDrag();
+				
+				checkSize();
+			}
+			
+			public function checkSize():void
+			{
+				if (width < contentGroup.width)
+				{
+					width = contentGroup.width;
+				}
+				
+				if (height < contentGroup.height)
+				{
+					height = contentGroup.height;
+				}
+			}
+			
+			
+			protected function resizeButton_enterFrameHandler(event:Event):void
+			{
+				if (resizing)
+				{
+					width = resizeButton.x + resizeButton.width;
+					height = resizeButton.y + resizeButton.height;
+				}
+			}
+			
+			protected function background_doubleClickHandler(event:MouseEvent):void
+			{
+				maximizeButton_clickHandler(null);
+			}
+			
+			protected function background_mouseDownHandler(event:MouseEvent):void
+			{
+				if (!maximized)
+				{
+					verticalCenter = NaN;
+					horizontalCenter = NaN;
+					
+					if (dragable && (doNotGroup || !Core.application.viewport.grouped))
+					{
+						startDrag(false);
+					}
+				}
+			}
+			
+			protected function background_mouseUpHandler(event:MouseEvent):void
+			{
+				stopDrag();
+				
+				if (!maximized)
+				{
+					backupX = x;
+					backupY = y;					
+				}
+			}
+			
+			protected function clearButton_clickHandler(event:MouseEvent):void
+			{
+				clear();
+			}
+			
+			public function clear():void
+			{
+				Core.clearAllComponents(this);
+				requestParams = new Object();
+				dispatchEvent(new Event('change'));
+				
+				focusOnTarget();
+				//for override
+			}
+			
+			protected function noButton_clickHandler(event:MouseEvent):void
+			{
+				if (noButtonEnabled)
+				{
+					noFunction();
+				}
+			}
+			
+			public function noFunction():void
+			{
+				Core.removeWindow(this);
+				//for override
+			}
+			
+			protected function yesButton_clickHandler(event:MouseEvent):void
+			{
+				if (yesButtonEnabled)
+				{
+					yesFunction();
+				}
+			}
+			
+			public function yesFunction():void
+			{
+				Core.removeWindow(this);
+				//for override
+			}
+			
+			private function refresh():void
+			{
+				if (!isNaN(percentWidth) || !isNaN(width))
+				{
+					contentGroup.percentWidth = 100;
+				}
+				else
+				{
+					contentGroup.percentWidth = NaN;
+				}
+				
+				if (!isNaN(percentHeight) || !isNaN(height))
+				{
+					contentGroup.percentHeight = 100;
+				}
+				else
+				{
+					contentGroup.percentHeight = NaN;
+				}
+				
+				Core.application.viewport.regroup();
+			}
+			
+			protected function mouseDownHandler(event:MouseEvent):void
+			{
+				if (event.target !== minimizeButton && event.target !== maximizeButton && event.target !== closeButton && event.target !== coverGroup)
+				{
+					Core.selectWindow(this);
+				}
+			}
+			
+			protected function getHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				inProgress = true;
+				getHttpService_invokeFunction();
+			}
+			
+			public function getHttpService_invokeFunction():void
+			{
+				//override function
+			}
+			
+			protected function getHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				
+				if (checkForErrors)
+				{
+					Core.checkErrors(getHttpService, label, checkForOnline);
+				}
+				
+				getHttpService_resultFunction();
+			}
+			
+			public function getHttpService_resultFunction():void
+			{
+				//override function
+			}
+			
+			protected function getHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+				getHttpService_faultFunction();
+			}
+			
+			public function getHttpService_faultFunction():void
+			{
+				//override function
+			}
+			
+			protected function setHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				inProgress = true;
+				setHttpService_invokeFunction();
+			}
+			
+			public function setHttpService_invokeFunction():void
+			{
+				//override function
+			}
+			
+			protected function setHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				
+				if (checkForErrors)
+				{
+					Core.checkErrors(setHttpService, label, checkForOnline);
+				}
+				
+				setHttpService_resultFunction();
+			}
+			
+			public function setHttpService_resultFunction():void
+			{
+				//override function
+			}
+			
+			protected function setHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+				setHttpService_faultFunction();
+			}
+			
+			public function setHttpService_faultFunction():void
+			{
+				//override function
+			}
+			
+			override protected function keyDownHandler(event:KeyboardEvent):void
+			{
+				super.keyDownHandler(event);
+				
+				switch(event.keyCode)
+				{
+					case 13:
+					{
+						if (yesOnKeyDown || event.ctrlKey)
+						{
+							yesButton_clickHandler(null);							
+						}
+						else if (focusComponentsArray && focusManager)
+						{
+							setFocusOnNextComponent(focusManager.getFocus());
+						}
+						break;
+					}
+						
+					case 83:
+					{
+						if (event.ctrlKey)
+						{
+							yesButton_clickHandler(null);
+						}
+						break;
+					}
+						
+					case 27:
+					{
+						if (noOnKeyDown)
+						{
+							if (closable)
+							{
+								closeButton_clickHandler(null);								
+							}
+							else if (clearButtonEnabled)
+							{
+								clearButton_clickHandler(null);
+							}
+						}
+						break;
+					}
+						
+					case 81:
+					{
+						if (event.ctrlKey)
+						{
+							closeButton_clickHandler(null);
+						}
+						break;
+					}
+					
+					case 82:
+					{
+						if (event.ctrlKey)
+						{
+							reloadFunction();
+						}
+						break;
+					}
+						
+					/*case 87:
+					{
+						if (event.ctrlKey)
+						{
+							maximized = !maximized;
+						}
+						break;
+					}*/
+						
+					case 116:
+					{
+						reloadFunction();
+						break;
+					}
+				}
+			}
+			
+			private function setFocusOnNextComponent(object:Object):void
+			{
+				var componentIndex:Number = Core.getArrayItemIndex(focusComponentsArray, object);
+				if (componentIndex !== -1 && componentIndex + 1 < focusComponentsArray.length)
+				{
+					var component:Object = focusComponentsArray[componentIndex + 1];
+					if (!Core.inList(object, focusComponentsExceptionsArray))
+					{
+						if (component.enabled && component.visible)
+						{
+							component.setFocus();						
+						}
+						else
+						{
+							setFocusOnNextComponent(component);
+						}
+					}
+				}
+				/*else
+				{
+					focusComponentsArray[0].setFocus();
+				}*/
+			}
+			
+			protected function reloadButton_clickHandler(event:MouseEvent):void
+			{
+				if (reloadButtonEnabled || autoreloadEnabled)
+				{
+					reloadFunction();
+				}
+			}
+			
+			public function reloadFunction():void
+			{
+				if (parent)
+				{
+					if (dataStorage)
+					{
+						inProgress = true;
+						dataStorage.refresh(requestParams);
+					}
+					else if (getHttpServiceController.length > 0)
+					{
+						getHttpService.send(requestParams);
+					}					
+				}
+				
+				for (var i:int = 0; i < refreshArray.length; i++) 
+				{
+					refreshArray[i].refresh();
+				}
+				
+				if (autoreloadEnabled)
+				{
+					autoreloadr.reset();
+				}
+			}
+			
+			public function get childrenWindows():Array
+			{
+				var array:Array = new Array();
+				var windows:Array = Core.findWindows();
+				
+				for (var i:int = 0; i < windows.length; i++) 
+				{
+					if (windows[i].parentWindow == this)
+					{
+						array.push(windows[i]);
+					}
+				}
+				
+				numChildrenWindows = array.length;
+				
+				return array;
+			}
+			
+			[Bindable]
+			public function set dataStorage(value:DataStorage):void
+			{
+				_dataStorage = value;
+				
+				dataStorage['removeEventListener'](Event.CHANGE, dataStorage_changeHandler);
+				dataStorage['addEventListener'](Event.CHANGE, dataStorage_changeHandler);
+				
+				dataStorage['removeEventListener'](FaultEvent.FAULT, dataStorage_faultHandler);
+				dataStorage['addEventListener'](FaultEvent.FAULT, dataStorage_faultHandler);
+				
+				inProgress = false;
+			}
+			
+			public function get dataStorage():DataStorage
+			{
+				return _dataStorage;
+			}
+			
+			/*[Bindable]
+			public function set action(value:String):void
+			{
+				_action = value;
+			}
+			
+			public function get action():String
+			{
+				return _action;
+			}*/
+			
+			private function dataStorage_changeHandler(event:Event):void
+			{
+				inProgress = false;
+				
+				if (parent)
+				{
+					dataStorage_changeFunction();
+				}
+			}
+			
+			public function dataStorage_changeFunction():void
+			{
+				//override function
+			}
+			
+			private function dataStorage_faultHandler(event:Event):void
+			{
+				inProgress = false;
+				
+				if (parent)
+				{
+					dataStorage_changeFunction();
+				}
+			}
+			
+			public function dataStorage_faultFunction():void
+			{
+				//override function
+			}
+			
+			[Bindable ('change')]
+			public function getValue(data:Object, item:String):*
+			{
+				if (requestParams)
+				{
+					return requestParams[item] || requestParams[item] == 0 || requestParams[item] == '' ? requestParams[item] : Core.hideUndefined(data ? data['@' + item] : null);	
+				}
+				return null;
+			}
+			
+			
+			public function changeValue(item:String, value:*, forced:Boolean = false, cteateItemInSource:Boolean = false, dispatchEventEnabled:Boolean = true):*
+			{
+				if (data)
+				{
+					//создаем элемент для кореекции null ситуаций
+					if (cteateItemInSource && data['@' + item] == undefined)
+					{
+						if (!isNaN(Number(value)))
+						{
+							data['@' + item] = '0';
+						}
+						else
+						{
+							data['@' + item] = '';
+						}
+					}
+					
+					if (Core.hideUndefined(data['@' + item]) !== String(value) || forced)
+					{
+						requestParams[item] = value;
+					}
+					else
+					{
+						requestParams[item] = null;
+					}
+				}
+				else
+				{
+					requestParams[item] = value;
+				}
+				
+				if (Core.getObjectLength(requestParams) > 0)
+				{
+					valuesChanged = true;
+				}
+				else
+				{
+					valuesChanged = false;
+				}
+				
+				if (dispatchEventEnabled && parent)
+				{
+					dispatchEvent(new Event('change'));
+				}
+				
+				afterChangeValue();
+				
+				return requestParams[item];
+			}
+			
+			protected function afterChangeValue():void
+			{
+				//override function
+			}
+			
+			public function injectData(item:Object):void
+			{
+				for (var i:int = 0; i < item.attributes().length(); i++) 
+				{
+					changeValue(item.attributes()[i].name(), item.attributes()[i], true, false, false);
+				}
+				
+				if (item.attributes().length() > 0)
+				{
+					dispatchEvent(new Event('change'));
+				}
+			}
+			
+			public function menuFill():void
+			{
+				//override function
+			}
+			
+			[Bindable]
+			public function set menu(value:Object):void
+			{
+				_menu = value;
+				
+				var windowMenu:ArrayCollection = new ArrayCollection(
+					[
+						{label: Core.translate.to(['window']), children: new ArrayCollection([
+							{label: Core.translate.to(['minimize']), action: 'minimize', enabled: minimizable},
+							{label: Core.translate.to(['maximize']), action: 'mzximize', enabled: maximizable},
+							{label: Core.translate.to(['close']), action: 'close', enabled: closable},
+						])}
+					]);
+				
+				menu.addItem(windowMenu[0]);
+			}
+			
+			public function get menu():Object
+			{
+				return _menu;
+			}
+			
+			protected function menuBar_itemClickHandler(event:MenuEvent):void
+			{
+				switch(event.item.action)
+				{
+					case 'minimize':
+					{
+						minimizeButton_clickHandler(null);
+						break;
+					}
+						
+					case 'mzximize':
+					{
+						maximizeButton_clickHandler(null);
+						break;
+					}
+						
+					case 'close':
+					{
+						closeButton_clickHandler(null);
+						break;
+					}
+						
+					default:
+					{
+						Core.launcher.launch(event.item.action, null, event.item.parentWindow);
+						break;
+					}
+				}
+			}
+			
+			protected function getLabel(action:String, mode:String):String
+			{
+				var string:String = Core.hideUndefined(mode) !== '' ? mode : action;
+				return string;
+			}
+			
+			public function removeWindow():void
+			{
+				Core.removeWindow(this);
+			}
+			
+			private function focusOnTarget():void
+			{
+				if (focusTarget)
+				{
+					Core.callAfter(function():void
+					{
+						if (stage)
+						{
+							stage.focus = null;
+						}
+						focusTarget.setFocus();
+					});
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:Background id="background" fillAlpha="{backgroundFillAlpha}" fillColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? (selectedColor ? selectedColor : Core.blue) : (unselectedColor ? unselectedColor : Core.veryLightBlue)}" doubleClickEnabled="true" doubleClick="background_doubleClickHandler(event)" mouseDown="background_mouseDownHandler(event)" mouseUp="background_mouseUpHandler(event)"/>
+	
+	<components:Border/>
+	
+	<s:VGroup id="contentGroup" width="100%" height="100%" gap="-1">
+		<s:HGroup width="100%" gap="0" visible="{headerEnabled}" includeInLayout="{headerEnabled}">
+			<s:HGroup width="100%" height="100%" gap="3" paddingLeft="5" paddingRight="2" paddingTop="2" paddingBottom="2">
+				<!--<s:Image id="iconImage" width="{iconWidth}" height="{iconHeight}" source="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}{icon.length > 0 ? icon : 'app'}_{Core.size * Core.sizeMultiplier}.png" smooth="true" smoothingQuality="high" doubleClickEnabled="true" doubleClick="iconImage_doubleClickHandler(event)"/>-->
+				<s:Image id="iconImage" width="{iconWidth}" height="{iconHeight}" source="{Core.getItem(Icons, (selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white_' : 'gray_') + (icon.length > 0 ? icon : 'app') + '_' + Core.size * Core.sizeMultiplier)}" smooth="true" smoothingQuality="high" doubleClickEnabled="true" doubleClick="iconImage_doubleClickHandler(event)"/>
+				<s:Label width="100%" height="{Core.size * Core.sizeMultiplier}" color="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? Core.white : Core.black}" showTruncationTip="true" maxDisplayedLines="1" text="{(valuesChanged ? '* ' : '') + Core.translate.to([label])}" fontWeight="bold" doubleClickEnabled="true" doubleClick="background_doubleClickHandler(event)" mouseDown="background_mouseDownHandler(event)" mouseUp="background_mouseUpHandler(event)"/>
+			</s:HGroup>
+			
+			<s:HGroup id="buttonsGroup" gap="-1">
+				<components:Button id="infoButton" width="{iconWidth}" height="{iconHeight}" visible="{infoButtonEnabled}" includeInLayout="{infoButtonEnabled}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="info" toolTip="{Core.translate.to(['information'])}" click="infoButton_clickHandler(event)"/>	
+				<components:Button id="minimizeButton" width="{iconWidth}" height="{iconHeight}" visible="{minimizable}" includeInLayout="{minimizable}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="minimize" toolTip="{Core.translate.to(['minimize'])}" click="minimizeButton_clickHandler(event)"/>					
+				<components:Button id="maximizeButton" width="{iconWidth}" height="{iconHeight}" visible="{maximizable}" includeInLayout="{maximizable}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="resize" toolTip="{Core.translate.to(['maximize'])}" click="maximizeButton_clickHandler(event)"/>
+				<components:Button id="closeButton" width="{iconWidth}" height="{iconHeight}" enabled="{(!inProgress &amp;&amp; disableNavigation) || !disableNavigation}" visible="{closable}" includeInLayout="{closable}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.red}" overColor="{Core.lightRed}" downColor="{Core.darkRed}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="{cancelButtonEnabled ? 'cancel' : 'delete'}" toolTip="{cancelButtonEnabled ? Core.translate.to(['cancel']) : Core.translate.to(['close'])}" click="closeButton_clickHandler(event)"/>				
+			</s:HGroup>
+		</s:HGroup>
+		
+		<components:HSplitter width="100%"/>
+		
+		<s:VGroup width="100%" gap="0">
+			<s:Group width="100%" visible="{menu}" includeInLayout="{menu}">
+				<components:Background color="{Core.lightGray}" left="5" right="5" top="5" bottom="6"/>
+				
+				<mx:MenuBar id="menuBar" left="-5" top="4" bottom="5" enabled="{!inProgress &amp;&amp; menuBarEnabled}" dataProvider="{menu}" cornerRadius="0" itemClick="menuBar_itemClickHandler(event)"/>
+				<components:Button id="button" borderEnabled="false" right="7" verticalCenter="-1" iconHeight="12" iconWidth="12" visible="{topAddon}" includeInLayout="{topAddon}" icon="{topAddonGroup.includeInLayout ? 'collapse' : 'expand'}" click="{topAddonGroup.visible = !topAddonGroup.visible; topAddonGroup.includeInLayout = !topAddonGroup.includeInLayout}"/>
+				
+				<components:Border left="5" right="5" top="5" bottom="6"/>
+				
+				<components:HSplitter width="100%" bottom="0"/>
+			</s:Group>
+			
+			<s:Group id="topAddonGroup" width="100%" visible="{topAddon}" includeInLayout="{topAddon}"/>
+			
+			<components:HSplitter visible="{topAddon &amp;&amp; topAddonGroup.includeInLayout}" includeInLayout="{topAddon &amp;&amp; topAddonGroup.includeInLayout}"/>
+		</s:VGroup>
+	
+		<s:VGroup width="100%" gap="-2" verticalAlign="middle" visible="{reloadButtonEnabled || clearButtonEnabled || noButtonEnabled || yesButtonEnabled || autoreloadEnabled || leftAddon || rightAddon}" includeInLayout="{reloadButtonEnabled || clearButtonEnabled || noButtonEnabled || yesButtonEnabled || autoreloadEnabled || leftAddon || rightAddon}">
+			<components:HSplitter width="100%"/>
+
+			<s:HGroup id="bottomGroup" width="100%" minHeight="{Core.size * Core.sizeMultiplier + 4}" gap="-1" enabled="{(!inProgress &amp;&amp; disableNavigation) || !disableNavigation}">
+				<s:HGroup gap="-1" visible="{reloadButtonEnabled || clearButtonEnabled || autoreloadEnabled}" includeInLayout="{reloadButtonEnabled || clearButtonEnabled || autoreloadEnabled}">
+					<components:Button id="clearButton" visible="{clearButtonEnabled}" includeInLayout="{clearButtonEnabled}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="paint" toolTip="{Core.translate.to(['clear'])}" click="clearButton_clickHandler(event)"/>
+					<components:Button id="reloadButton" visible="{reloadButtonEnabled}" includeInLayout="{reloadButtonEnabled}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.orange}" overColor="{Core.lightOrange}" downColor="{Core.darkOrange}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="reload" toolTip="{Core.translate.to(['reload'])}" click="reloadButton_clickHandler(event)"/>
+
+					<!--<components:VSplitter visible="{reloadButtonEnabled &amp;&amp; autoreloadEnabled}" includeInLayout="{reloadButtonEnabled &amp;&amp; autoreloadEnabled}"/>-->
+					<components:Autoreloader id="autoreloadr" visible="{autoreloadEnabled}" includeInLayout="{autoreloadEnabled}" run="{autoreloadrRun}"/>
+				</s:HGroup>
+				
+				<s:Group width="100%" height="100%" visible="{addonSpacerEnabled}" includeInLayout="{addonSpacerEnabled}">
+					<components:VSplitter visible="{reloadButtonEnabled || clearButtonEnabled || autoreloadEnabled}" includeInLayout="{reloadButtonEnabled || clearButtonEnabled || autoreloadEnabled}"/>
+				</s:Group>
+				
+				<s:HGroup gap="-1" visible="{noButtonEnabled || yesButtonEnabled}" includeInLayout="{noButtonEnabled || yesButtonEnabled}">
+					<components:Button id="yesButton" visible="{yesButtonEnabled}" includeInLayout="{yesButtonEnabled}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.green}" overColor="{Core.lightGreen}" downColor="{Core.darkGreen}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="{yesButtonIcon.length > 0 ? yesButtonIcon : 'checkmark'}" label="{Core.translate.to([yesButtonLabel])}" labelColor="{selected ? Core.white : Core.black}" toolTip="{Core.translate.to([yesButtonTooltip])}" click="yesButton_clickHandler(event)"/>
+					<components:Button id="noButton" visible="{noButtonEnabled}" includeInLayout="{noButtonEnabled}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.red}" overColor="{Core.lightRed}" downColor="{Core.darkRed}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="{noButtonIcon.length > 0 ? noButtonIcon : 'delete'}" label="{Core.translate.to([noButtonLabel])}" labelColor="{selected ? Core.white : Core.black}" toolTip="{Core.translate.to([noButtonTooltip])}" click="noButton_clickHandler(event)"/>
+				</s:HGroup>
+			</s:HGroup>	
+		</s:VGroup>
+	</s:VGroup>
+	
+	<components:Button id="resizeButton"
+					   visible="{resizable &amp;&amp; !maximized &amp;&amp; !Core.application.viewport.grouped}"
+					   toolTip="{Core.translate.to(['resize'])}"
+					   right="0"
+					   react="false"
+					   borderEnabled="false"
+					   bottom="0"
+					   width="{Core.size * 10}"
+					   height="{Core.size * 10}"
+					   paddingWidth="0"
+					   paddingHeight="0"
+					   icon="resizer"
+					   mouseDown="resizeButton_mouseDownHandler(event)"
+					   mouseUp="resizeButton_mouseUpHandler(event)"
+					   enterFrame="resizeButton_enterFrameHandler(event)"/>
+	
+	<components:Shadow blur="{parentWindow ? 10 : 5}" visible="{!maximized &amp;&amp; selected &amp;&amp; ((doNotGroup &amp;&amp; Core.application.viewport.grouped) || !Core.application.viewport.grouped)}"/>
+	
+	<s:Group id="coverGroup" left="5" right="5" top="{Core.size * Core.sizeMultiplier + 4}" bottom="{Core.size * Core.sizeMultiplier + 4}" visible="{coverGroupEnabled}">
+		<s:Rect width="100%" height="100%">
+			<s:fill>
+				<s:SolidColor color="0x000000" alpha="0"/>
+			</s:fill>
+		</s:Rect>
+	</s:Group>
+</s:Group>

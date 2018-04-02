@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{getLabel(action, mode) + ' of_note'}"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   setHttpServiceController="notes"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   focusTarget="{textArea}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:notes="engine.components.notes.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.events.TextOperationEvent;
+			
+			import engine.core.Core;
+			
+			override public function yesFunction():void
+			{
+				if (Core.getObjectLength(requestParams) > 0) 
+				{
+					requestParams.item_id = data ? data.@item_id : null;
+					setHttpService.send(requestParams);
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (action == 'adding')
+					{
+						parentWindow['notes']['dataGridSet'].isNewRecord = true;
+					}
+					
+					parentWindow['notes'].reloadFunction();
+					Core.removeWindow(this);
+				}
+			}
+			
+			protected function textArea_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('note', event.target.text, action == 'adding');
+			}
+			
+			private function progressBarRefresh():void
+			{
+				progressBar.setProgress(String(getValue(data, 'note')).length, textArea.maxChars);
+			}
+			
+			override public function dataChangeFunction():void
+			{
+				callLater(progressBarRefresh);
+			}
+			
+			override protected function afterChangeValue():void
+			{
+				progressBarRefresh();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<extended:TextArea id="textArea" width="100%" minWidth="400" height="100%" minHeight="{Core.size * Core.sizeMultiplier}" verticalAlign="top" maxChars="500" text="{getValue(data, 'note')}" change="textArea_changeHandler(event)" creationComplete="{event.target.setFocus()}"/>
+						<mx:ProgressBar id="progressBar" width="100%" paddingLeft="-1" paddingRight="-1" mode="manual" minimum="0" label="{Core.translate.to(['characters_'])}: %1 {Core.translate.to(['of'])} %2 (%3%%)" labelPlacement="center"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<hacontactsreferencewindow:HAContactsReferenceWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+													 xmlns:s="library://ns.adobe.com/flex/spark" 
+													 xmlns:mx="library://ns.adobe.com/flex/mx"
+													 
+													 minimizable="true"
+													 maximizable="true"
+													 maximized="false"
+													 
+													 icon="man"
+													 label="contacts"
+													 
+													 width="{Math.round(Core.application.width / 1.10)}"
+													 height="{Math.round(Core.application.height / 1.25)}"
+													 
+													 noOnKeyDown="false"
+													 
+													 autoreloadEnabled="true"
+													 
+													 autoreloadrRun="{numChildrenWindows == 0}"
+													 menuBarEnabled="{numChildrenWindows == 0}"
+													 coverGroupEnabled="{numChildrenWindows > 0}"
+													 
+													 xmlns:hacontactsreferencewindow="projects.cabinet.elements.hawindow.elements.references.hacontactsreferencewindow.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+		]]>
+	</fx:Script>
+	
+</hacontactsreferencewindow:HAContactsReferenceWindow>

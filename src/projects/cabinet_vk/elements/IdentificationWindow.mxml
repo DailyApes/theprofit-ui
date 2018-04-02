@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<elements:BasicApiIdentificationWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+									   xmlns:s="library://ns.adobe.com/flex/spark" 
+									   xmlns:mx="library://ns.adobe.com/flex/mx"
+									   xmlns:elements="engine.elements.*"
+									   
+									   xmlns:components="engine.components.*">
+	
+	<!--<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			override protected function onIdentificationSuccess():void
+			{
+				var object:Object = new Object();
+				object['@balance'] = 100;
+				Core.accountData = object;
+				
+				Core.firstIdentification = false;
+				
+				Core.data.refresh();
+				Core.removeWindow(this);
+				
+				Core.launcher.launch('LicenseWindow');
+				Core.sessionTimer.start();
+				/*Core.identified = true;
+				Core.application.viewport.switchStartWindow();
+				
+				Core.sessionTimer.start();*/
+			}
+		]]>
+	</fx:Script>-->
+	
+	
+</elements:BasicApiIdentificationWindow>

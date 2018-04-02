@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="{action == 'adding' ? 'plus' : 'pencil'}"
+				   label="{action == 'adding' ? Core.translate.to([action, 'of_account']) : (String(data.@email).length > 0 ? data.@email : data.@vk_id)}"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   clearButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   setHttpServiceController="accounts"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   focusTarget="{emailTextInput}"
+				   
+				   focusComponentsArray="{[emailTextInput,
+				   vkIdTextInput,
+				   lastNameTextInput,
+				   firstNameTextInput,
+				   patronymicTextInput,
+				   activeCheckBox,
+				   adminCheckBox,
+				   passwordTextInput,
+				   confirmPasswordTextInput,
+				   yesButton]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Declarations>
+		<mx:EmailValidator id="emailValidator"
+						   source="{emailTextInput}"
+						   property="text"
+						   invalidCharError="{Core.translate.to(['invalids', 'characters'])}"
+						   invalidDomainError="{Core.translate.to(['specify_the', 'domain'])}"
+						   invalidPeriodsInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingAtSignError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingPeriodInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingUsernameError="{Core.translate.to(['filled', 'invalid'])}"
+						   tooManyAtSignsError="{Core.translate.to(['filled', 'invalid'])}"
+						   requiredFieldError="{Core.translate.to(['required', 'to_fill'])}"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import flash.net.navigateToURL;
+			
+			import mx.events.CalendarLayoutChangeEvent;
+			
+			import spark.events.TextOperationEvent;
+			
+			import engine.core.Core;
+			
+			[Bindable]
+			public var displayVk:Boolean;
+			[Bindable]
+			public var displayBarcode:Boolean;
+			
+			override public function init():void
+			{
+				super.init();
+				
+				if (action == 'adding')
+				{
+					barcodeButton_clickHandler(null);
+				}
+			}
+			
+			override public function yesFunction():void
+			{
+				if (action == 'adding')
+				{
+					Core.dispatchAllComponents(this);
+				}
+
+				if (Core.getObjectLength(requestParams) > 0 || confirmPasswordTextInput.text.length > 0)
+				{
+					if (!emailTextInput.validation() || emailValidator.validate().type !== 'valid' || !checkUnique())
+					{
+						Core.addEvent(label + ' > email > ' + emailTextInput.errorString, '', true);
+						emailTextInput.setFocus();
+					}
+					else if (checkPasswords())
+					{
+						requestParams.item_id = data ? data.@item_id : null;
+						setHttpService.send(requestParams);
+					}
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			private function checkPasswords():Boolean
+			{
+				if (passwordTextInput.text.length > 0 || confirmPasswordTextInput.text.length > 0 || action == 'adding')
+				{
+					passwordTextInput.validate = true;
+					confirmPasswordTextInput.validate = true;
+					
+					if (!passwordTextInput.validation())
+					{
+						Core.addEvent(label + ' > password > ' + passwordTextInput.errorString, '', true);
+						passwordTextInput.setFocus();
+						
+						return false;
+					}
+					else if (!confirmPasswordTextInput.validation())
+					{
+						Core.addEvent(label + ' > password > ' + confirmPasswordTextInput.errorString, '', true);
+						confirmPasswordTextInput.setFocus();
+						
+						return false;
+					}
+					else if (passwordTextInput.text !== confirmPasswordTextInput.text)
+					{
+						confirmPasswordTextInput.errorString = Core.translate.to(['different']);
+						
+						Core.addEvent(label + ' > password > ' + confirmPasswordTextInput.errorString, '', true);
+						confirmPasswordTextInput.setFocus();
+						
+						return false;
+					}
+				}
+				
+				passwordTextInput.validate = false;
+				confirmPasswordTextInput.validate = false;
+				
+				return true;
+			}
+			
+			private function checkUnique():Boolean
+			{
+				if (action == 'adding')
+				{
+					if (!Core.checkUnique(parentWindow['dataGridSet'].dataProvider, '@email', emailTextInput.text))
+					{
+						emailTextInput.errorString = Core.translate.to(['he_must', 'be', 'by_he_unique']);
+						emailTextInput.setFocus();
+						
+						return false;
+					}
+				}
+				
+				return true;
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					if (action == 'adding')
+					{
+						parentWindow['dataGridSet'].isNewRecord = true;
+					}
+					
+					parentWindow.reloadFunction();
+					Core.removeWindow(this);
+				}
+			}
+			
+			protected function passwordTextInput_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('password', event.target.text)
+				
+				if (requestParams.password == '')
+				{
+					requestParams.password = null;
+				}
+				else if (requestParams.password)
+				{
+					requestParams.password = MD5.hash(requestParams.password);
+				}
+			}
+		
+			protected function datefield_changeHandler(event:CalendarLayoutChangeEvent):void
+			{
+				if (dateField.text.length > 0)
+				{
+					if (String(getValue(data, 'birth_date')).indexOf('00:00:00'))
+					{
+						changeValue('birth_date', event.target.text, action == 'adding');					
+					}
+					else
+					{
+						changeValue('birth_date', event.target.text + ' 00:00:00', action == 'adding');
+					}
+				}
+			}
+			
+			protected function textArea_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('note', event.target.text, action == 'adding');
+				progressBarRefresh();
+			}
+			
+			private function progressBarRefresh():void
+			{
+				progressBar.setProgress(textArea.text.length, textArea.maxChars);
+			}
+			
+			override public function dataChangeFunction():void
+			{
+				callLater(progressBarRefresh);
+			}
+			
+			protected function openVkButton_clickHandler(event:MouseEvent):void
+			{
+				var urlRequest:URLRequest = new URLRequest();
+				urlRequest.url = 'https://vk.com/id' + getValue(data, 'vk_id');
+				navigateToURL(urlRequest, '_blank');
+			}
+			
+			protected function barcodeButton_clickHandler(event:MouseEvent):void
+			{
+				changeValue('barcode', MD5.hash(String(Math.random())), action == 'adding');
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<s:VGroup>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['email'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['vk'])}:" visible="{displayVk}" includeInLayout="{displayVk}"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['barcode'])}:" visible="{displayBarcode}" includeInLayout="{displayBarcode}"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['last_name'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['first_name'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['patronymic'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['birth_date'])}:"/>
+							</s:VGroup>
+							
+							<s:VGroup width="100%" minWidth="{Core.size * 220}" gap="5">
+								<extended:TextInput id="emailTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" validate="true" text="{getValue(data, 'email')}" change="{changeValue('email', event.target.text, action == 'adding')}" creationComplete="{event.target.setFocus()}"/>
+								
+								<s:HGroup width="100%" gap="5" visible="{displayVk}" includeInLayout="{displayVk}">
+									<extended:TextInput id="vkIdTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" enabled="{displayVk}" text="{getValue(data, 'vk_id')}" change="{changeValue('vk_id', event.target.text, action == 'adding')}"/>
+									<components:Button id="openVkButton" width="{Core.size * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" visible="{getValue(data, 'vk_id')}" includeInLayout="{getValue(data, 'vk_id')}" label="VK" click="openVkButton_clickHandler(event)"/>
+								</s:HGroup>
+
+								<s:HGroup width="100%" gap="5" visible="{displayBarcode}" includeInLayout="{displayBarcode}">
+									<extended:TextInput id="barcodeTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'barcode')}" editable="false"/>
+									<components:Button id="barcodeButton" width="{Core.size * Core.sizeMultiplier}" height="{Core.size * Core.sizeMultiplier}" iconSize="20" icon="bulb_off" toolTip="{Core.translate.to(['generate'])}" click="barcodeButton_clickHandler(event)"/>
+								</s:HGroup>
+								
+								<extended:TextInput id="lastNameTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'last_name')}" change="{changeValue('last_name', event.target.text, action == 'adding')}"/>
+								<extended:TextInput id="firstNameTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'first_name')}" change="{changeValue('first_name', event.target.text, action == 'adding')}"/>
+								<extended:TextInput id="patronymicTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'patronymic')}" change="{changeValue('patronymic', event.target.text, action == 'adding')}"/>
+								
+								<s:HGroup width="100%" gap="5" verticalAlign="middle">
+									<extended:DateField id="dateField" height="{Core.size * Core.sizeMultiplier}" yearNavigationEnabled="true" formatString="YYYY-MM-DD" text="{getValue(data, 'birth_date')}" change="datefield_changeHandler(event)"/>
+									<s:Spacer width="100%"/>
+									<components:VSplitter/>
+									<s:Spacer width="100%"/>
+									<extended:CheckBox id="activeCheckBox" label="{Core.translate.to(['he_active'])}" selected="{Core.toBoolean(getValue(data, 'active'))}" change="{changeValue('active', Core.toNumber(event.target.selected), action == 'adding')}"/>
+									<extended:CheckBox id="adminCheckBox" label="{Core.translate.to(['admin'])}" selected="{Core.toBoolean(getValue(data, 'admin'))}" change="{changeValue('admin', Core.toNumber(event.target.selected), action == 'adding')}"/>
+								</s:HGroup>
+							</s:VGroup>
+						</s:HGroup>
+						
+						<components:HSplitter/>
+						
+						<s:HGroup width="100%" gap="5" verticalAlign="middle">
+							<extended:TextInput id="passwordTextInput" width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" displayAsPassword="true" prompt="{Core.translate.to(['he_new password'])}" change="passwordTextInput_changeHandler(event)"/>
+							<extended:TextInput id="confirmPasswordTextInput" width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" displayAsPassword="true" prompt="{Core.translate.to(['confirmation'])}"/>	
+						</s:HGroup>
+						
+						<extended:TextArea id="textArea" width="100%" height="100%" minHeight="{Core.size * Core.sizeMultiplier}" verticalAlign="top" maxChars="250" text="{getValue(data, 'note')}" change="textArea_changeHandler(event)"/>
+						
+						<mx:ProgressBar id="progressBar" width="100%" paddingLeft="-1" paddingRight="-1" mode="manual" minimum="0" label="{Core.translate.to(['characters_'])}: %1 {Core.translate.to(['of'])} %2 (%3%%)" labelPlacement="center"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

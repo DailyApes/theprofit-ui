@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:components="engine.components.*">
+
+	<fx:Metadata>
+		[Event(name="change", type="flash.events.Event")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.UIComponent;
+			
+			import spark.components.Group;
+			
+			import engine.core.Core;
+			
+			private var _content:UIComponent;
+			private var _addon:UIComponent;
+			private var _bottomAddon:UIComponent;
+			
+			[Bindable]
+			public var backgroundFillColor:uint;
+			[Bindable]
+			public var backgroundfillAlpha:Number = 1;
+			
+			[Bindable]
+			public var collapsible:Boolean;
+			
+			[Bindable]
+			public var selected:Boolean;
+			
+			[Bindable]
+			public var label:String = '';
+			
+			[Bindable]
+			public function set content(value:UIComponent):void
+			{
+				_content = value;
+				
+				contentGroup.addElement(content);
+			}
+			
+			public function get content():UIComponent
+			{
+				return _content;
+			}
+			
+			[Bindable]
+			public function set bottomAddon(value:UIComponent):void
+			{
+				_bottomAddon = value;
+				
+				bottomAddonGroup.addElement(bottomAddon);
+			}
+			
+			public function get bottomAddon():UIComponent
+			{
+				return _bottomAddon;
+			}
+			
+			[Bindable]
+			public function set addon(value:UIComponent):void
+			{
+				_addon = value;
+				
+				addonGroup.addElement(addon);
+			}
+			
+			public function get addon():UIComponent
+			{
+				return _addon;
+			}
+			
+			protected function button_clickHandler(event:MouseEvent):void
+			{
+				selected = !selected;
+			}
+			
+			protected function background_doubleClickHandler(event:MouseEvent):void
+			{
+				selected = !selected;
+			}
+			
+		]]>
+	</fx:Script>
+
+	<components:Background id="background" fillColor="{backgroundFillColor}" fillAlpha="{backgroundfillAlpha}" doubleClickEnabled="true" doubleClick="background_doubleClickHandler(event)"/>
+	<components:Border/>
+	
+	<s:VGroup width="100%" height="100%" gap="-1">
+		<s:VGroup width="100%" visible="{collapsible || label.length > 0}" includeInLayout="{collapsible || label.length > 0}" gap="-1">
+			<s:HGroup width="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5" verticalAlign="middle">
+				<components:Button id="button" iconHeight="12" iconWidth="12" visible="{collapsible}" includeInLayout="{collapsible}" icon="{selected ? 'collapse' : 'expand'}" click="button_clickHandler(event)"/>
+				
+				<s:Label text="{Core.translate.to([label])}" mouseOver="{button.dispatchEvent(event)}" mouseOut="button.dispatchEvent(event)" mouseDown="button.dispatchEvent(event)" mouseUp="button.dispatchEvent(event)" click="button.dispatchEvent(event)"/>
+				
+				<s:Spacer width="100%"/>
+				
+				<s:Group id="addonGroup"/>
+			</s:HGroup>
+			
+			<components:HSplitter visible="{selected || (!collapsible &amp;&amp; label.length > 0)}" includeInLayout="{selected || (!collapsible &amp;&amp; label.length > 0)}" convex="false"/>
+		</s:VGroup>
+		
+		<s:Group id="contentGroup" width="100%" height="100%" visible="{selected || !collapsible}" includeInLayout="{selected || !collapsible}"/>
+		
+		<components:HSplitter visible="{bottomAddon}" includeInLayout="{bottomAddon}" convex="false"/>
+		
+		<s:Group id="bottomAddonGroup" width="100%"/>
+	</s:VGroup>
+	
+</s:Group>

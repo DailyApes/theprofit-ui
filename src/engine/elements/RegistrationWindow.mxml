@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				  
+				   icon="plus"
+				   label="registration"
+				   createViewportButton="false"
+				   
+				   windowsStackEnabled="false"
+				   maximizable="true"
+				   
+				   focusTarget="{emailTextInput}"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   yesButtonEnabled="{agreeCheckBox.selected}"
+				   
+				   getHttpServiceController="texts"
+				   
+				   setHttpServiceController="identification"
+				   setHttpServiceAction="register"
+				   
+				   checkForOnline="false"
+				   
+				   clearButtonEnabled="true"
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Declarations>
+		<mx:EmailValidator id="emailValidator"
+						   source="{emailTextInput}"
+						   property="text"
+						   invalidCharError="{Core.translate.to(['invalids', 'characters'])}"
+						   invalidDomainError="{Core.translate.to(['specify_the', 'domain'])}"
+						   invalidPeriodsInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingAtSignError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingPeriodInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingUsernameError="{Core.translate.to(['filled', 'invalid'])}"
+						   tooManyAtSignsError="{Core.translate.to(['filled', 'invalid'])}"
+						   requiredFieldError="{Core.translate.to(['required', 'to_fill'])}"/>
+		
+		<mx:EmailValidator id="confirmEmailValidator"
+						   source="{confirmEmailTextInput}"
+						   property="text"
+						   invalidCharError="{Core.translate.to(['invalids', 'characters'])}"
+						   invalidDomainError="{Core.translate.to(['specify_the', 'domain'])}"
+						   invalidPeriodsInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingAtSignError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingPeriodInDomainError="{Core.translate.to(['filled', 'invalid'])}"
+						   missingUsernameError="{Core.translate.to(['filled', 'invalid'])}"
+						   tooManyAtSignsError="{Core.translate.to(['filled', 'invalid'])}"
+						   requiredFieldError="{Core.translate.to(['required', 'to_fill'])}"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.elements.TextFlow;
+			
+			override public function init():void
+			{
+				super.init();
+				
+				//Core.findWindow(IdentificationWindow).minimized = true;
+			}
+			
+			override public function disable():void
+			{
+				super.disable();
+				
+				Core.selectWindow(BasicIdentificationWindow);
+			}
+			
+			override public function yesFunction():void
+			{
+				/*if (!emailTextInput.validation() || emailValidator.validate().type !== 'valid')
+				{
+					Core.addEvent(label + ' > email > ' + emailTextInput.errorString, '', true);
+					emailTextInput.setFocus();
+				}
+				else if (!confirmEmailTextInput.validation() || confirmEmailValidator.validate().type !== 'valid')
+				{
+					Core.addEvent(label + ' > confirmation of_email > ' + emailTextInput.errorString, '', true);
+					emailTextInput.setFocus();
+				}
+				else if (emailTextInput.text !== confirmEmailTextInput.text)
+				{
+					confirmEmailTextInput.errorString = 'отличается';
+					callLater(emailTextInput.setFocus);
+				}
+				else if (!passwordTextInput.validation())
+				{
+					passwordTextInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					callLater(emailTextInput.setFocus);
+					
+					Core.addEvent(label + ' > password > ' + passwordTextInput.errorString, '', true);
+					passwordTextInput.setFocus();
+				}
+				else if (!confirmPasswordTextInput.validation())
+				{
+					emailTextInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					callLater(emailTextInput.setFocus);
+					
+					Core.addEvent(label + ' >  confirmation of_password > ' + passwordTextInput.errorString, '', true);
+					confirmPasswordTextInput.setFocus();
+				}
+				else if (passwordTextInput.text !== confirmPasswordTextInput.text)
+				{
+					emailTextInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					callLater(emailTextInput.setFocus);
+					
+					confirmPasswordTextInput.errorString = 'отличается';
+						
+					Core.addEvent(label + ' > password > ' + confirmPasswordTextInput.errorString, '', true);
+					confirmPasswordTextInput.setFocus();
+				}*/
+				if (!emailTextInput.validation() || emailValidator.validate().type !== 'valid')
+				{
+					callLater(emailTextInput.setFocus);
+				}
+				else if (!confirmEmailTextInput.validation() || confirmEmailValidator.validate().type !== 'valid')
+				{
+					callLater(confirmEmailTextInput.setFocus);
+				}
+				else if (emailTextInput.text !== confirmEmailTextInput.text)
+				{
+					confirmEmailTextInput.errorString = 'отличается';
+					callLater(emailTextInput.setFocus);
+				}
+				else if (!passwordTextInput.validation())
+				{
+					callLater(passwordTextInput.setFocus);
+				}
+				else if (!confirmPasswordTextInput.validation())
+				{
+					callLater(confirmPasswordTextInput.setFocus);
+				}
+				else if (passwordTextInput.text !== confirmPasswordTextInput.text)
+				{
+					confirmPasswordTextInput.errorString = 'отличается';
+					callLater(confirmPasswordTextInput.setFocus);
+				}
+				else
+				{
+					requestParams = new Object();
+					requestParams.email = String(emailTextInput.text).toLocaleLowerCase();
+					requestParams.password = MD5.hash(passwordTextInput.text);
+					setHttpService.send(requestParams);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(setHttpService, label, false, false);
+				if (result == 0)
+				{
+					var window:BasicIdentificationWindow = Core.launcher.launch('IdentificationWindow') as BasicIdentificationWindow;
+					window.emailTextInput.text = emailTextInput.text;
+					window.passwordTextInput.text = passwordTextInput.text;
+					
+					Core.removeWindow(this);
+				}
+				else
+				{
+					emailTextInput.errorString = Core.translate.to([Core.translate.to(['error_code_' + result])]);
+					callLater(emailTextInput.setFocus);
+				}
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(getHttpService, label, false);
+				if (result == 0)
+				{
+					var text:String = getHttpService.lastResult.item[0]['@' + resourceManager.localeChain[0]];
+					var flow:TextFlow = TextConverter.importToFlow(text, TextConverter.TEXT_FIELD_HTML_FORMAT);
+					textArea.textFlow = flow;
+				}
+			}
+			
+			override public function cancelFunction():void
+			{
+				Core.removeWindow(this);
+				Core.launcher.launch('IdentificationWindow');
+			}
+			
+			override protected function onResourceManagerChange():void
+			{
+				reloadFunction();
+			}
+			
+			override public function reloadFunction():void
+			{
+				requestParams = new Object();
+				requestParams.item_id = 1;
+				super.reloadFunction();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+						<extended:TextArea id="textArea" width="100%" height="100%" verticalAlign="top" editable="false"/>
+						<s:HGroup width="100%" gap="5" verticalAlign="middle">
+							<!--<extended:CheckBox id="agreeCheckBox" width="100%" label="{Core.translate.to(['i', 'he_agree'])}"/>-->
+							<extended:CheckBox id="agreeCheckBox" width="100%" label="{Core.translate.to(['i', 'he_agree'])}"/>
+							
+							<s:VGroup width="100%" horizontalAlign="right" gap="5">
+								<s:HGroup>
+									<s:Label height="{Core.size * Core.sizeMultiplier}" verticalAlign="middle" text="{Core.translate.to(['email'])}:"/>
+									<extended:TextInput id="emailTextInput" minWidth="{Core.size * 150}" height="{Core.size * Core.sizeMultiplier}" validate="true" prompt="{Core.translate.to(['email'])}" creationComplete="{event.target.setFocus()}"/>
+									<extended:TextInput id="confirmEmailTextInput" minWidth="{Core.size * 150}" height="{Core.size * Core.sizeMultiplier}" validate="true" prompt="{Core.translate.to(['confirmation'])}"/>									
+								</s:HGroup>
+								<s:HGroup>
+									<s:Label height="{Core.size * Core.sizeMultiplier}" verticalAlign="middle" text="{Core.translate.to(['password'])}:"/>
+									<extended:TextInput id="passwordTextInput" minWidth="{Core.size * 150}" height="{Core.size * Core.sizeMultiplier}" validate="true" displayAsPassword="true" prompt="{Core.translate.to(['password'])}"/>
+									<extended:TextInput id="confirmPasswordTextInput" minWidth="{Core.size * 150}" height="{Core.size * Core.sizeMultiplier}" validate="true" displayAsPassword="true" prompt="{Core.translate.to(['confirmation'])}"/>									
+								</s:HGroup>
+							</s:VGroup>
+						</s:HGroup>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>
+		</s:Group>
+	</components:content>
+
+</components:Window>

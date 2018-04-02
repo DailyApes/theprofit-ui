@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="document"
+				   label="{Core.hideUndefined(Core.getItem(tree.selectedItem, 'label'))} ({localesList.selectedItem.locale})"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   noOnKeyDown="false"
+				   yesOnKeyDown="false"
+				   
+				   yesButtonEnabled="{valuesChanged &amp;&amp; !inProgress}"
+				   yesButtonIcon="save"
+				   yesButtonTooltip="save"
+				   yesButtonLabel="save"
+				   
+				   reloadButtonEnabled="true"
+				   
+				   getHttpServiceController="texts"
+				   
+				   setHttpServiceController="texts"
+				   setHttpServiceAction="set"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:texteditor="engine.components.texteditor.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.ListEvent;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			private var treePreviosSelectedIndex:Number = 0;
+			private var closeOnSetHttpService:Boolean;
+			
+			override public function init():void
+			{
+				tree.selectedIndex = 0;
+				super.init();
+			}
+			
+			protected function tree_itemClickHandler(event:ListEvent):void
+			{
+				if (tree.selectedItem.action)
+				{
+					if (Core.getObjectLength(requestParams) > 0)
+					{
+						var window:Window = Core.launcher.launch('ConfirmWindow');
+						window.label = Core.translate.to(['save changes']) + '?';
+						window.parentWindow = this;
+						
+						window['onYesFunction'] = function():void
+						{
+							treePreviosSelectedIndex = tree.selectedIndex;
+							yesFunction();
+							Core.removeWindow(window);
+						};
+						
+						window['onNoFunction'] = function():void
+						{
+							treePreviosSelectedIndex = tree.selectedIndex;
+							reloadFunction();
+							Core.removeWindow(window);
+						};
+						
+						window['onCancelFunction'] = function():void
+						{
+							tree.selectedIndex = treePreviosSelectedIndex;
+							Core.removeWindow(window);
+						};	
+					}
+					else
+					{
+						treePreviosSelectedIndex = tree.selectedIndex;
+						reloadFunction();
+					}
+				}
+				else
+				{
+					Core.tree_itemClickHandler(event);
+				}
+			}
+			
+			override public function reloadFunction():void
+			{
+				requestParams = {item_id:tree.selectedItem ? tree.selectedItem.action : '1'};
+				super.reloadFunction();
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(getHttpService, label);
+				if (result == 0)
+				{
+					valuesChanged = false;
+					requestParams = new Object();
+					data = getHttpService.lastResult.item;
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(setHttpService, label);
+				if (result == 0)
+				{
+					if (closeOnSetHttpService)
+					{
+						closeOnSetHttpService = false;
+						removeWindow();
+					}
+					else
+					{
+						textEditor.htmlText();
+						reloadFunction();
+					}
+				}
+			}
+			
+			override public function yesFunction():void
+			{
+				if (Core.getObjectLength(requestParams) > 0) 
+				{
+					requestParams.item_id = data ? data.@item_id : null;
+					setHttpService.send(requestParams);
+				}
+			}
+			
+			override public function cancelFunction():void
+			{
+				if (Core.getObjectLength(requestParams) > 0)
+				{
+					var window:Window = Core.launcher.launch('ConfirmWindow');
+					window.label = Core.translate.to(['save changes']) + '?';
+					window.parentWindow = this;
+					
+					window['onYesFunction'] = function():void
+					{
+						closeOnSetHttpService = true;
+						yesFunction();
+						Core.removeWindow(window);
+					};
+					
+					window['onNoFunction'] = function():void
+					{
+						removeWindow();
+						Core.removeWindow(window);
+					};
+					
+					window['onCancelFunction'] = function():void
+					{
+						Core.removeWindow(window);
+					};	
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:VGroup width="200" height="100%" gap="5">
+				<extended:List id="localesList" width="100%" dataProvider="{Core.localesTool.dataProvider as IList}" selectedColumn="locale" selectedValue="{Core.localesTool.selectedLocale}">
+					<extended:layout>
+						<s:VerticalLayout gap="0" horizontalAlign="contentJustify" requestedMaxRowCount="{Core.localesTool.dataProvider.length}"/>
+					</extended:layout>
+				</extended:List>
+				
+				<mx:Tree id="tree" width="100%" height="100%" borderColor="{Core.black}" labelField="label" dataProvider="{Core.getItem(Core.menus, 'textsEditorMenu')}" itemClick="tree_itemClickHandler(event)"/>
+			</s:VGroup>
+			
+			<texteditor:TextEditor id="textEditor" width="100%" height="100%" text="{getValue(data, localesList.selectedItem.locale)}" change="{changeValue(localesList.selectedItem.locale, event.target.text)}"/>
+		</s:HGroup>
+	</components:content>
+</components:Window>

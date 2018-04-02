@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 implements="mx.managers.IFocusManagerComponent"
+		 mouseOver="mouseOverHandler(event)"
+		 mouseOut="mouseOutHandler(event)"
+		 mouseDown="mouseDownHandler(event)"
+		 mouseUp="mouseUpHandler(event)"
+		 click="clickHandler(event)"
+		 mouseChildren="false"
+		 focusEnabled="true"
+		 xmlns:components="engine.components.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import engine.assets.Icons;
+			import engine.core.Core;
+			
+			[Bindable]
+			public var icon:String = '';
+			[Bindable]
+			public var image:String = '';
+			
+			[Bindable]
+			public var iconWidth:Number;
+			[Bindable]
+			public var iconHeight:Number;
+			
+			[Bindable]
+			public var label:String = '';
+			
+			private var _defaultIconColor:String = 'gray';
+			private var _color:uint = Core.lightGray;
+			private var _labelColor:uint = Core.black;
+			private var _backgroundAlpha:Number = 0;
+			private var _selected:Boolean;
+			private var _downLabelColor:uint;
+			private var _downColor:uint;
+			
+			private var _iconSize:Number;
+			
+			[Bindable]
+			public var overColor:uint;
+			
+			[Bindable]
+			public var overLabelColor:uint;
+			
+			[Bindable]
+			public var currentColor:uint = color;
+			[Bindable]
+			public var currentLabelColor:uint = labelColor;
+			[Bindable]
+			public var currentBackgroundAlpha:Number = backgroundAlpha;
+			
+			[Bindable]
+			public var overIconColor:String = 'white';
+			
+			[Bindable]
+			private var currentIconColor:String = defaultIconColor;
+			
+			[Bindable]
+			public var react:Boolean = true;
+			[Bindable]
+			public var borderEnabled:Boolean = true;
+			
+			[Bindable]
+			public var paddingWidth:Number = 2;
+			[Bindable]
+			public var paddingHeight:Number = 2;
+			
+			[Bindable]
+			public var triger:Boolean;
+			
+			[Bindable]
+			public var doNotTranslate:Boolean;
+			
+			[Bindable]
+			public var convex:Boolean = true;
+			
+			[Bindable]
+			public var textAlign:String = 'left';
+			[Bindable]
+			public var verticalAlign:String = 'middle';
+			
+			public function init(icon:String, label:String):void
+			{
+				this.icon = icon;
+				this.label = label;
+			}
+			
+			[Bindable]
+			public function set color(value:uint):void
+			{
+				_color = value;
+				
+				currentColor = color;
+			}
+			
+			public function get color():uint
+			{
+				return _color;
+			}
+			
+			[Bindable]
+			public function set downLabelColor(value:uint):void
+			{
+				_downLabelColor = value;
+				
+				if (selected)
+				{
+					currentLabelColor = downLabelColor;					
+				}
+			}
+			
+			public function get downLabelColor():uint
+			{
+				return _downLabelColor;
+			}
+			
+			[Bindable]
+			public function set downColor(value:uint):void
+			{
+				_downColor = value;
+				
+				if (selected)
+				{
+					currentColor = downColor;					
+				}
+			}
+			
+			public function get downColor():uint
+			{
+				return _downColor;
+			}
+			
+			[Bindable]
+			public function set labelColor(value:uint):void
+			{
+				_labelColor = value;
+				
+				currentLabelColor = labelColor;
+			}
+			
+			public function get labelColor():uint
+			{
+				return _labelColor;
+			}
+			
+			[Bindable]
+			public function set defaultIconColor(value:String):void
+			{
+				_defaultIconColor = value;
+				
+				currentIconColor = defaultIconColor;
+			}
+			
+			public function get defaultIconColor():String
+			{
+				return _defaultIconColor;
+			}
+			
+			[Bindable]
+			public function set backgroundAlpha(value:Number):void
+			{
+				_backgroundAlpha = value;
+				
+				currentBackgroundAlpha = backgroundAlpha;
+			}
+			
+			public function get backgroundAlpha():Number
+			{
+				return _backgroundAlpha;
+			}
+			
+			override public function set width(value:Number):void
+			{
+				super.width = value;
+				
+				/*if (isNaN(width))
+				{
+					contentGroup.percentWidth = NaN;
+				}
+				else
+				{
+					contentGroup.percentWidth = 100;
+				}*/
+			}
+			
+			override public function set height(value:Number):void
+			{
+				super.height = value;
+				
+				/*if (isNaN(height))
+				{
+					contentGroup.percentHeight = NaN;
+				}
+				else
+				{
+					contentGroup.percentHeight = 100;
+				}*/
+			}
+			
+			[Bindable]
+			public function set iconSize(value:uint):void
+			{
+				_iconSize = value;
+				
+				iconWidth = iconSize;
+				iconHeight = iconSize;
+			}
+			
+			public function get iconSize():uint
+			{
+				return _iconSize;
+			}
+			
+			protected function mouseOverHandler(event:MouseEvent):void
+			{
+				if (react)
+				{
+					currentBackgroundAlpha = 1;
+					
+					if (!selected)
+					{
+						currentColor = overColor ? overColor : Core.overColor;						
+					}
+					
+					currentLabelColor = overLabelColor ? overLabelColor : Core.white;
+					currentIconColor = overIconColor;
+					
+					border.inverted = selected;
+					border.underlineEnabled = !selected
+				}
+			}
+			
+			protected function mouseOutHandler(event:MouseEvent):void
+			{
+				if (react)
+				{
+					if (selected)
+					{
+						mouseDownHandler(null);
+					}
+					else
+					{
+						currentBackgroundAlpha = backgroundAlpha;
+						
+						if (selected)
+						{
+							currentColor = downColor;
+						}
+						else
+						{
+							currentColor = color;
+						}
+						
+						currentLabelColor = labelColor;
+						currentIconColor = defaultIconColor;
+						
+						border.inverted = false;
+						border.underlineEnabled = true;
+					}
+				}
+			}
+			
+			protected function mouseDownHandler(event:MouseEvent):void
+			{
+				if (react)
+				{
+					currentBackgroundAlpha = 1;
+					currentColor = downColor ? downColor : Core.downColor;
+					
+					currentLabelColor = overLabelColor ? overLabelColor : Core.white;
+					currentIconColor = overIconColor;
+					
+					border.inverted = true;
+					border.underlineEnabled = false;
+				}
+			}
+			
+			protected function mouseUpHandler(event:MouseEvent):void
+			{
+				if (react)
+				{
+					/*if (selected)
+					{*/
+						mouseOverHandler(null);
+					/*}*/
+					/*else
+					{
+						currentBackgroundAlpha = 1;
+						currentColor = overColor ? overColor : Core.overColor;
+						currentLabelColor = overLabelColor ? overLabelColor : Core.white;
+						currentIconColor = overIconColor;
+						
+						border.inverted = false;
+						border.underlineEnabled = true;
+					}*/
+				}
+			}
+			
+			override protected function keyDownHandler(event:KeyboardEvent):void
+			{
+				super.keyDownHandler(event);
+				
+				switch(event.keyCode)
+				{
+					case 13:
+					{
+						mouseOutHandler(null);
+						dispatchEvent(new MouseEvent('click'));
+						break;
+					}
+						
+					case 32:
+					{
+						mouseDownHandler(null);
+						break;
+					}
+				}
+			}
+			
+			override protected function keyUpHandler(event:KeyboardEvent):void
+			{
+				super.keyDownHandler(event);
+				
+				switch(event.keyCode)
+				{
+					case 32:
+					{
+						mouseOutHandler(null);
+						dispatchEvent(new MouseEvent('click'));
+						break;
+					}
+				}
+			}
+			
+			protected function clickHandler(event:MouseEvent):void
+			{
+				if (triger)
+				{
+					selected = !selected;
+					
+					mouseOverHandler(null);
+				}
+			}
+			
+			[Bindable]
+			public function set selected(value:Boolean):void
+			{
+				_selected = value;
+				
+				callLater(mouseOutHandler, [null]);
+			}
+			
+			public function get selected():Boolean
+			{
+				return _selected;
+			}
+		]]>
+	</fx:Script>
+
+	<s:Rect left="0" right="0" top="0" bottom="0">
+		<s:fill>
+			<s:SolidColor alpha="{currentBackgroundAlpha}" color="{currentColor}"/>
+		</s:fill>
+	</s:Rect>
+	
+	<components:Border id="border" visible="{borderEnabled}" includeInLayout="{borderEnabled}" convex="{convex}"/>
+	
+	<!--<s:HGroup width="100%" id="contentGroup" gap="{paddingWidth}" paddingLeft="{isNaN(contentGroup.percentHeight) ? paddingWidth : NaN}" paddingRight="{isNaN(contentGroup.percentHeight) ? paddingWidth : NaN}" paddingTop="{isNaN(contentGroup.percentHeight) ? paddingHeight : NaN}" paddingBottom="{isNaN(contentGroup.percentHeight) ? paddingHeight : NaN}" horizontalAlign="center">
+		<s:Label minWidth="0" height="{iconHeight ? iconHeight : Core.size * Core.sizeMultiplier}" fontWeight="bold" textAlign="{textAlign}" color="{currentLabelColor}" text="{Core.translate.to([label])}" visible="{label.length > 0}" includeInLayout="{label.length > 0}"/>
+		<s:Spacer width="100%" includeInLayout="{percentWidth == 100 &amp;&amp; icon.length > 0}"/>
+		<s:Image width="{iconWidth}" height="{iconHeight}" source="{icon.length > 0 ? Core.getItem(Icons, currentIconColor + '_' + icon + '_' + Core.size * Core.sizeMultiplier) : ''}" visible="{icon.length > 0}" includeInLayout="{icon.length > 0}" smooth="true" smoothingQuality="high"/>
+	</s:HGroup>-->
+	
+	<s:HGroup width="100%" height="100%" id="contentGroup" gap="{paddingWidth}" paddingLeft="{paddingWidth}" paddingRight="{paddingWidth}" paddingTop="{paddingHeight}" paddingBottom="{paddingHeight}" horizontalAlign="center">
+		<s:Label minWidth="0" height="{iconHeight ? iconHeight : Core.size * Core.sizeMultiplier}" fontWeight="bold" textAlign="{textAlign}" verticalAlign="middle" color="{currentLabelColor}" text="{doNotTranslate ? label : Core.translate.to([label])}" visible="{label.length > 0}" includeInLayout="{label.length > 0}"/>
+		<s:Spacer width="100%" includeInLayout="{percentWidth == 100 &amp;&amp; label.length > 0 &amp;&amp; icon.length > 0}"/>
+		<s:Image width="{iconWidth}" height="{iconHeight}" source="{image.length > 0 ? image : (icon.length > 0 ? Core.getItem(Icons, currentIconColor + '_' + icon + '_' + Core.size * Core.sizeMultiplier) : '')}" visible="{image.length > 0 || icon.length > 0}" includeInLayout="{image.length > 0 || icon.length > 0}" smooth="true" smoothingQuality="high"/>
+	</s:HGroup>
+</s:Group>

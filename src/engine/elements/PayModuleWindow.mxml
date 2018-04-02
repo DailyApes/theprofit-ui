@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="money"
+				   label="pay module"
+				   
+				   yesButtonEnabled="{Core.getItem(Core.accountData, '@balance') >= 10}"
+				   noButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   
+				   setHttpServiceController="paymodule"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			override public function yesFunction():void
+			{
+				requestParams = new Object();
+				requestParams.module_id = 1;
+				requestParams.weeks = hSlider.value / 10;
+				
+				setHttpService.send(requestParams);
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (Core.checkErrors(setHttpService) == 0)
+				{
+					parentWindow.reloadFunction();
+					Core.removeWindow(this);
+					
+					Core.launcher.launch('PaymentsHistoryWindow');
+					Core.account.refresh();
+				}
+			}
+			
+			protected function refillButton_clickHandler(event:MouseEvent):void
+			{
+				minimized = true;
+				Core.launcher.launch('RefillBalanceWindow', null, this);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup minWidth="250" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HSlider id="hSlider" width="100%" visible="{Core.getItem(Core.accountData, '@balance') >= 10}" includeInLayout="{Core.getItem(Core.accountData, '@balance') >= 10}" stepSize="10" minimum="10" maximum="{Core.toNumber(Core.getItem(Core.accountData, '@balance'))}"/>
+						<s:Label height="{Core.size * Core.sizeMultiplier}" visible="{Core.getItem(Core.accountData, '@balance') >= 10}" includeInLayout="{Core.getItem(Core.accountData, '@balance') >= 10}" text="{Core.translate.to(['pay module'])}: {hSlider.value} = {hSlider.value / 10 * 7} ({Core.translate.to(['days'])})"/>
+						
+						<components:HSplitter/>
+						
+						<s:Label height="{Core.size * Core.sizeMultiplier}" verticalAlign="middle" text="{Core.translate.to(['he_current balance'])}: {Core.hideUndefined(Core.getItem(Core.accountData, '@balance'))}{Core.getItem(Core.accountData, '@balance') >= 10 ? '' : ', ' + Core.translate.to(['insufficient to_pay'])}"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+	<components:leftAddon>
+		<components:Button id="refillButton" visible="{Core.api}" includeInLayout="{Core.api}" label="{Core.translate.to(['refill'])}" icon="money" paddingWidth="5" backgroundAlpha="{selected ? 1 : 0}" labelColor="{Core.white}" color="{Core.blue}" overColor="{Core.lightBlue}" downColor="{Core.darkBlue}" defaultIconColor="{selected ? 'white' : 'gray'}" click="refillButton_clickHandler(event)"/>
+	</components:leftAddon>
+	
+</components:Window>

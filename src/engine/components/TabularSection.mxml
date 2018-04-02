@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 
+		 width="100%"
+		 height="100%"
+		 
+		 xmlns:components="engine.components.*">
+	
+	<fx:Declarations>
+		<s:HTTPService id="getHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (parentDocument.getHttpServiceModule.length > 0 ? parentDocument.getHttpServiceModule : Core.getHttpServiceModule) + (parentDocument.getHttpServiceModule.length > 0 || Core.getHttpServiceModule.length > 0 ? '/' : '') + parentDocument.getHttpServiceController + '/gettabularsection'}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="getHttpService_invokeHandler(event)"
+					   result="getHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); getHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+		
+		<s:HTTPService id="setHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (parentDocument.setHttpServiceModule.length > 0 ? parentDocument.setHttpServiceModule : Core.setHttpServiceModule) + (parentDocument.setHttpServiceModule.length > 0 || Core.setHttpServiceModule.length > 0 ? '/' : '') + parentDocument.setHttpServiceController + '/settabularsection'}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="setHttpService_invokeHandler(event)"
+					   result="setHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); setHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.ScrollPolicy;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.InvokeEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.collections.SortField;
+			
+			import engine.core.Core;
+			
+			[Bindable]
+			public var columns:Array;
+			
+			[Bindable]
+			public var addFunction:Function;
+			
+			[Bindable]
+			public var editFunction:Function;
+			
+			[Bindable]
+			public var copyFunction:Function;
+			
+			[Bindable]
+			public var deleteFunction:Function;
+			
+			public function reloadFunction():void
+			{
+				
+			}
+			
+			protected function getHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			protected function getHttpService_resultHandler(event:ResultEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			protected function getHttpService_faultHandler(event:FaultEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			protected function setHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			protected function setHttpService_resultHandler(event:ResultEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			protected function setHttpService_faultHandler(event:FaultEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:DataGridSet id="dataGridSet"
+							width="100%"
+							height="100%"
+							
+							translateColumns=""
+							sortFields="{[new SortField('@creation_date', true, false)]}"
+							numericFields=""
+							
+							reloadOnLocalesChange="true"
+							
+							dataProvider="{getHttpService.lastResult.item}"
+							selectionMode="multipleRows"
+							horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+							controlPanelEnabled="{!parentDocument.inProgress}"
+							
+							filterFunctionsArray="{[]}"
+							clearFunctionsArray="{[]}"
+							
+							addFunction="{addFunction}"
+							editFunction="{editFunction}"
+							copyFunction="{copyFunction}"
+							reloadFunction="{reloadFunction}"
+							deleteFunction="{deleteFunction}"
+							
+							columns="{columns}">
+	</components:DataGridSet>
+	
+</s:Group>

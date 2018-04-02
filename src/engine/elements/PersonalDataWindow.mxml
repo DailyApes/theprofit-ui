@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="pencil"
+				   label="personals data"
+				   
+				   yesButtonEnabled="true"
+				   noButtonEnabled="true"
+				   reloadButtonEnabled="true"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   yesOnKeyDown="false"
+				   
+				   getHttpServiceController="personaldata"
+				   
+				   setHttpServiceController="personaldata"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   focusTarget="{lastNameTextInput}"
+				   
+				   focusComponentsArray="{[lastNameTextInput,
+				   firstNameTextInput,
+				   patronymicTextInput,
+				   passwordTextInput,
+				   confirmPasswordTextInput,
+				   yesButton]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import mx.events.CalendarLayoutChangeEvent;
+			
+			import spark.events.TextOperationEvent;
+			
+			import engine.core.Core;
+			
+			override public function init():void
+			{
+				super.init();
+			}
+			
+			override public function yesFunction():void
+			{
+				if (Core.getObjectLength(requestParams) > 0 || confirmPasswordTextInput.text.length > 0)
+				{
+					if (checkPasswords())
+					{
+						requestParams.item_id = data ? data.@item_id : null;
+						setHttpService.send(requestParams);
+					}
+				}
+				else
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(setHttpService, label);
+				if (result == 0)
+				{
+					Core.removeWindow(this);
+				}
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(getHttpService, label);
+				if (result == 0)
+				{
+					valuesChanged = false;
+					requestParams = new Object();
+					data = getHttpService.lastResult.item;
+				}
+			}
+			
+			private function checkPasswords():Boolean
+			{
+				if (passwordTextInput.text.length > 0 || confirmPasswordTextInput.text.length > 0 || action == 'adding')
+				{
+					passwordTextInput.validate = true;
+					confirmPasswordTextInput.validate = true;
+					
+					if (!passwordTextInput.validation())
+					{
+						Core.addEvent(label + ' > password > ' + passwordTextInput.errorString, '', true);
+						passwordTextInput.setFocus();
+						
+						return false;
+					}
+					else if (!confirmPasswordTextInput.validation())
+					{
+						Core.addEvent(label + ' > password > ' + confirmPasswordTextInput.errorString, '', true);
+						confirmPasswordTextInput.setFocus();
+						
+						return false;
+					}
+					else if (passwordTextInput.text !== confirmPasswordTextInput.text)
+					{
+						confirmPasswordTextInput.errorString = Core.translate.to(['different']);
+						
+						Core.addEvent(label + ' > password > ' + confirmPasswordTextInput.errorString, '', true);
+						confirmPasswordTextInput.setFocus();
+						
+						return false;
+					}
+				}
+				
+				passwordTextInput.validate = false;
+				confirmPasswordTextInput.validate = false;
+				
+				return true;
+			}
+			
+			protected function passwordTextInput_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('password', event.target.text)
+				
+				if (requestParams.password == '')
+				{
+					requestParams.password = null;
+				}
+				else if (requestParams.password)
+				{
+					requestParams.password = MD5.hash(requestParams.password);
+				}
+			}
+			
+			protected function datefield_changeHandler(event:CalendarLayoutChangeEvent):void
+			{
+				if (dateField.text.length > 0)
+				{
+					if (String(getValue(data, 'birth_date')).indexOf('00:00:00'))
+					{
+						changeValue('birth_date', event.target.text);					
+					}
+					else
+					{
+						changeValue('birth_date', event.target.text + ' 00:00:00');
+					}
+				}
+			}
+			
+			protected function textArea_changeHandler(event:TextOperationEvent):void
+			{
+				changeValue('note', event.target.text);
+			}
+			
+			override public function dataChangeFunction():void
+			{
+				callLater(progressBarRefresh);
+			}
+			
+			override protected function afterChangeValue():void
+			{
+				progressBarRefresh();
+			}
+			
+			private function progressBarRefresh():void
+			{
+				progressBar.setProgress(String(getValue(data, 'note')).length, textArea.maxChars);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<s:HGroup width="100%" gap="5">
+							<s:VGroup>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['email'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['last_name'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['first_name'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['patronymic'])}:"/>
+								<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['birth_date'])}:"/>
+							</s:VGroup>
+							
+							<s:VGroup width="100%" minWidth="{Core.size * 200}" gap="5">
+								<s:Label width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'email')}"/>
+								<extended:TextInput id="lastNameTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'last_name')}" change="{changeValue('last_name', event.target.text)}"/>
+								<extended:TextInput id="firstNameTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'first_name')}" change="{changeValue('first_name', event.target.text)}"/>
+								<extended:TextInput id="patronymicTextInput" width="100%" height="{Core.size * Core.sizeMultiplier}" text="{getValue(data, 'patronymic')}" change="{changeValue('patronymic', event.target.text)}"/>
+								
+								<extended:DateField id="dateField" height="{Core.size * Core.sizeMultiplier}" yearNavigationEnabled="true" formatString="YYYY-MM-DD" text="{getValue(data, 'birth_date')}" change="datefield_changeHandler(event)"/>
+							</s:VGroup>
+						</s:HGroup>
+						
+						<components:HSplitter/>
+						
+						<s:HGroup width="100%" gap="5" verticalAlign="middle">
+							<extended:TextInput id="passwordTextInput" width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" displayAsPassword="true" prompt="{Core.translate.to(['he_new password'])}" change="passwordTextInput_changeHandler(event)"/>
+							<extended:TextInput id="confirmPasswordTextInput" width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" displayAsPassword="true" prompt="{Core.translate.to(['confirmation'])}"/>	
+						</s:HGroup>
+						
+						<extended:TextArea id="textArea" width="100%" height="100%" minHeight="{Core.size * Core.sizeMultiplier}" verticalAlign="top" maxChars="250" text="{getValue(data, 'note')}" change="textArea_changeHandler(event)"/>
+						
+						<mx:ProgressBar id="progressBar" width="100%" paddingLeft="-1" paddingRight="-1" mode="manual" minimum="0" label="{Core.translate.to(['characters_'])}: %1 {Core.translate.to(['of'])} %2 (%3%%)" labelPlacement="center"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="smile"
+				   label="ideas"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   noOnKeyDown="false"
+				   yesOnKeyDown="false"
+				   
+				   autoreloadEnabled="true"
+				   
+				   dataStorage="{Core.data.ideas}"
+				   
+				   setHttpServiceController="ideas"
+				   setHttpServiceAction="deletecompletely"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   autoreloadrRun="{numChildrenWindows == 0}"
+				   menuBarEnabled="{numChildrenWindows == 0}"
+				   coverGroupEnabled="{numChildrenWindows > 0}"
+				   
+				   refreshArray="{[Core.data.ideasStates, Core.data.ideasCategories, Core.data.ideasPriorities, Core.data.adminsAccounts]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*" xmlns:notes="engine.components.notes.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.core.ScrollPolicy;
+			import mx.events.ListEvent;
+			import mx.utils.ObjectUtil;
+			
+			import spark.collections.SortField;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			public function addFunction():void
+			{
+				var window:Window = Core.launcher.launch('IdeasEditWindow', null, this, ['adding']);
+				
+				window.changeValue('date', Core.dateConvert(new Date()), true, false, false);
+				window.changeValue('category_id', 1, true, false, false);
+				window.changeValue('state_id', 1, true, false, false);
+				window.changeValue('author_id', 1, true, false, false);
+				window.changeValue('priority_id', 1, true, false, false);
+				window.changeValue('note', '', true, false, true);
+			}
+			
+			public function editFunction():void
+			{
+				Core.launcher.launch('IdeasEditWindow', ObjectUtil.clone(dataGridSet.dataGrid.selectedItem), this, ['editing']);
+			}
+			
+			public function copyFunction():void
+			{
+				var window:Window = Core.launcher.launch('IdeasEditWindow', null, this, ['adding', 'copying']);
+				
+				var selectedItem:Object = ObjectUtil.clone(dataGridSet.dataGrid.selectedItem);
+				selectedItem.@item_id = null;
+				window.injectData(selectedItem);
+			}
+			
+			public function deleteFunction():void
+			{
+				var window:Window = Core.launcher.launch('ConfirmWindow');
+				window.parentWindow = this;
+				
+				window['onYesFunction'] = function():void
+				{
+					var requestParams:Object = new Object();
+					
+					var array:Array = new Array();
+					for (var i:int = 0; i < dataGridSet.dataGrid.selectedItems.length; i++)
+					{
+						array.push(dataGridSet.dataGrid.selectedItems[i].@item_id);
+					}
+					
+					requestParams.item_id = array.toString();
+					setHttpService.send(requestParams);
+					
+					Core.removeWindow(window);
+				};
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				reloadFunction();
+			}
+			
+			override public function dataStorage_changeFunction():void
+			{
+				if (dataGridSet.dataProvider)
+				{
+					for (var i:int = 0; i < dataGridSet.dataProvider.length(); i++) 
+					{
+						dataGridSet.dataProvider[i].@author = Core.getItemValue(Core.data['adminsAccounts'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@author_id, '@email');
+						
+						dataGridSet.dataProvider[i].@category = Core.getItemValue(Core.data['ideasCategories'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@category_id, '@name');
+						dataGridSet.dataProvider[i].@paint4 = Core.getItemValue(Core.data['ideasCategories'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@category_id, '@color');
+						
+						dataGridSet.dataProvider[i].@state = Core.getItemValue(Core.data['ideasStates'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@state_id, '@name');
+						dataGridSet.dataProvider[i].@paint5 = Core.getItemValue(Core.data['ideasStates'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@state_id, '@color');
+						
+						dataGridSet.dataProvider[i].@priority = Core.getItemValue(Core.data['ideasPriorities'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@priority_id, '@name');
+						dataGridSet.dataProvider[i].@paint6 = Core.getItemValue(Core.data['ideasPriorities'].dataProvider, '@item_id', dataGridSet.dataProvider[i].@priority_id, '@color');
+						
+						if (dataGridSet.dataProvider[i].@state_id == 5)
+						{
+							dataGridSet.dataProvider[i].@paint7 = Core.darkRed;
+						}
+						else if (dataGridSet.dataProvider[i].@state_id == 4)
+						{
+							dataGridSet.dataProvider[i].@paint7 = Core.darkGreen;
+						}
+						else
+						{
+							dataGridSet.dataProvider[i].@paint7 = Core.darkBlue;
+						}
+					}					
+				}
+				
+				dataGridSet.translate();
+				
+				ideasStatesSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				ideasPrioritiesSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				adminsAccountsSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				ideasCategoriesSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				
+				Core.callAfter(dataGridSet_changeHandler, 100, [null]);
+			}
+			
+			override public function reloadFunction():void
+			{
+				Core.data.ideasStates.refresh();
+				Core.data.ideasCategories.refresh();
+				Core.data.ideasPriorities.refresh();
+				
+				super.reloadFunction();
+			}
+			
+			override public function menuFill():void
+			{
+				menu = new ArrayCollection(
+					[
+						{label: Core.translate.to(['references']), children: new ArrayCollection([
+							{label: Core.translate.to(['categories']), action: 'IdeasCategoriesReferenceWindow', enabled: true},
+							{label: Core.translate.to(['priorities']), action: 'IdeasPrioritiesReferenceWindow', enabled: true},
+							{label: Core.translate.to(['states']), action: 'IdeasStatesReferenceWindow', enabled: true},
+						])}
+					]);
+			}
+			
+			protected function dataGridSet_changeHandler(event:ListEvent):void
+			{
+				notes.reloadFunction();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:Scroller id="filtersGroup" width="200" height="100%">
+				<s:VGroup width="100%" height="100%" gap="5">
+					<components:SelectableList id="ideasStatesSelectableList" width="100%" maxHeight="200" radioButtonsEnabled="true" sortEnabled="false" selected="true" label="states" column="@state_id" dataProvider="{Core.toArrayList(Core.data.ideasStates.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+					<components:SelectableList id="ideasPrioritiesSelectableList" width="100%" maxHeight="200" radioButtonsEnabled="true" sortEnabled="false" selected="true" label="priorities" column="@priority_id" dataProvider="{Core.toArrayList(Core.data.ideasPriorities.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+					<components:SelectableList id="adminsAccountsSelectableList" width="100%" maxHeight="200" radioButtonsEnabled="true" selected="true" label="authors" column="@author_id" labelField="@email" dataProvider="{Core.toArrayList(Core.data.adminsAccounts.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+					<components:SelectableList id="ideasCategoriesSelectableList" width="100%" height="100%" minHeight="100" radioButtonsEnabled="true" selected="true" label="categories" column="@category_id" dataProvider="{Core.toArrayList(Core.data.ideasCategories.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+				</s:VGroup>
+			</s:Scroller>
+			
+			<mx:VDividedBox width="100%" height="100%" verticalGap="5">
+				<components:DataGridSet id="dataGridSet"
+										width="100%"
+										height="100%"
+										
+										translateColumns="@category, @state, @priority"
+										numericFields="@exp"
+										
+										sortFields="{[new SortField('@item_id', true, true)]}"
+										
+										reloadOnLocalesChange="true"
+										
+										dataProvider="{dataStorage.dataProvider}"
+										selectionMode="multipleRows"
+										horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+										controlPanelEnabled="{numChildrenWindows == 0}"
+										
+										filterFunctionsArray="{[ideasStatesSelectableList.filterFunction, ideasPrioritiesSelectableList.filterFunction, adminsAccountsSelectableList.filterFunction, ideasCategoriesSelectableList.filterFunction]}"
+										clearFunctionsArray="{[ideasStatesSelectableList.clear, ideasPrioritiesSelectableList.clear, adminsAccountsSelectableList.clear, ideasCategoriesSelectableList.clear]}"
+										
+										addFunction="{addFunction}"
+										editFunction="{editFunction}"
+										copyFunction="{copyFunction}"
+										reloadFunction="{reloadFunction}"
+										deleteFunction="{deleteFunction}"
+										
+										change="dataGridSet_changeHandler(event)">
+					
+					<components:bottomAddon>
+						<components:Button backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="contrast" toolTip="{Core.translate.to(['display', 'filters'])}" click="{filtersGroup.visible = !filtersGroup.visible; filtersGroup.includeInLayout = !filtersGroup.includeInLayout; callLater(checkSize)}"/>						
+					</components:bottomAddon>
+					
+					<components:bottomRightAddon>
+						<components:Button backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="comment" toolTip="{Core.translate.to(['display', 'notes'])}" click="{notes.visible = !notes.visible; notes.includeInLayout = !notes.includeInLayout; callLater(checkSize)}"/>						
+					</components:bottomRightAddon>
+					
+					<components:columns>
+						<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['id'])}" dataField="@item_id"/>
+						<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date', 'of_creation'])}" dataField="@creation_date"/>
+						<mx:AdvancedDataGridColumn width="130" headerText="{Core.translate.to(['date', 'of_changing'])}" dataField="@last_activity"/>
+						<mx:AdvancedDataGridColumn width="150" headerText="{Core.translate.to(['category'])}" dataField="@category" itemRenderer="engine.itemrenderrers.PaintAdvancedDataGridItemRenderer"/>
+						<mx:AdvancedDataGridColumn width="150" headerText="{Core.translate.to(['author'])}" dataField="@author"/>
+						<mx:AdvancedDataGridColumn width="100" headerText="{Core.translate.to(['state'])}" dataField="@state" itemRenderer="engine.itemrenderrers.PaintAdvancedDataGridItemRenderer"/>
+						<mx:AdvancedDataGridColumn width="100" headerText="{Core.translate.to(['priority'])}" dataField="@priority" itemRenderer="engine.itemrenderrers.PaintAdvancedDataGridItemRenderer"/>
+						<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['description'])}" dataField="@description"/>
+					</components:columns>
+				</components:DataGridSet>
+				
+				<notes:Notes id="notes" minHeight="199" moduleId="1" data="{dataGridSet.dataGrid.selectedItem}"/>
+			</mx:VDividedBox>
+		</s:HGroup>
+	</components:content>
+</components:Window>
+

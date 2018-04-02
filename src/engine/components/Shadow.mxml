@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Rect xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 width="100%"
+		 height="100%" xmlns:components="engine.components.*">
+	
+	<fx:Script>
+		<![CDATA[
+			[Bindable]
+			public var blur:Number = 5;
+		]]>
+	</fx:Script>
+	
+	
+	<s:fill>
+		<s:SolidColor color="0x000000"/>
+	</s:fill>
+
+	<s:filters>
+		<s:GlowFilter blurX="{blur}" blurY="{blur}" color="0x000000" alpha="0.5" quality="1" knockout="true"/>
+	</s:filters>
+	
+	<!--<components:Border left="-1" right="-1" top="-1" bottom="-1"/>-->
+</s:Rect>

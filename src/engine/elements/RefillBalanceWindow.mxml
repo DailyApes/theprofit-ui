@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="money"
+				   label="refill balance"
+				   
+				   doNotGroup="true"
+				   centered="true"
+				   
+				   setHttpServiceController="recgarge"
+				   setHttpServiceAction="set"
+				   
+				   windowsStackEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			private var balance:Number;
+			
+			override public function creationCompleteFunction():void
+			{
+				Core.api.addEventListener('onOrderSuccess', onOrderSuccess);
+			}
+			
+			private function button_clickHandler(votes:Number, balance:Number):void
+			{
+				this.balance = balance;
+				Core.api.callMethod('showOrderBox', {type:'votes', votes:votes});
+				
+				if (parentWindow)
+				{
+					parentWindow.minimized = false;
+					removeWindow();
+				}
+				else
+				{
+					removeWindow();					
+				}
+			}
+			
+			private function onOrderSuccess(event:Object):void
+			{
+				Core.launcher.launch('BalanceRefillsHistoryWindow');
+				Core.account.refresh();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%">
+			<components:FieldSet width="100%" height="100%" top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" gap="5">
+						<components:Button width="100%" paddingWidth="5" label="1 {Core.translate.to(['vote'])} = 10" click="{button_clickHandler(1, 10)}"/>
+						<components:Button width="100%" paddingWidth="5" label="5 {Core.translate.to(['of_votes_'])} = 50 + 5" click="{button_clickHandler(5, 50 + 5)}"/>
+						<components:Button width="100%" paddingWidth="5" label="10 {Core.translate.to(['of_votes_'])} = 100 + 20" click="{button_clickHandler(10, 100 + 20)}"/>
+						<components:Button width="100%" paddingWidth="5" label="20 {Core.translate.to(['of_votes_'])} = 200 + 50" click="{button_clickHandler(20, 200 + 50)}"/>
+						<components:Button width="100%" paddingWidth="5" label="50 {Core.translate.to(['of_votes_'])} = 500 + 150" click="{button_clickHandler(50, 500 + 150)}"/>
+						<components:Button width="100%" paddingWidth="5" label="100 {Core.translate.to(['of_votes_'])} = 1000 + 400" click="{button_clickHandler(100, 1000 + 400)}"/>
+						
+						<components:HSplitter/>
+						
+						<s:Label height="{Core.size * Core.sizeMultiplier}" fontWeight="bold" text="{Core.translate.to(['he_current balance'])}: {Core.hideUndefined(Core.getItem(Core.accountData, '@balance'))}"/>
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>			
+		</s:Group>
+	</components:content>
+	
+</components:Window>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<views:BasicView xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		
+		title="идентификация"
+		
+		closeButtonEnabled="true"
+		backButtonEnabled="false"
+		actionBarVisible="false"
+		
+		bottomActionBarEnabled="false"
+		
+		disableContent="true"
+		
+		setHttpServiceController="identification"
+		
+		xmlns:components="engine.components.*"
+		xmlns:views="engine.views.*"
+		xmlns:extended="engine.extended.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import engine.core.CoreMobile;
+			
+			protected function enterButton_clickHandler(event:MouseEvent):void
+			{
+				enter();
+			}
+			
+			public function enter():void
+			{
+				if (emailTextInput.validation() && passwordTextInput.validation())
+				{
+					requestParams = new Object();
+					requestParams.login = emailTextInput.text;
+					requestParams.password = passwordTextInput.text;
+					/*requestParams.email = String(emailTextInput.text).toLocaleLowerCase();
+					requestParams.password = CoreMobile.yii ? MD5.hash(passwordTextInput.text) : passwordTextInput.text;*/
+					setHttpService.send(requestParams);
+				}
+			}
+			
+			override protected function setHttpService_resultHandler(event:ResultEvent):void
+			{
+				//inProgress = false;
+				setHttpService_resultFunction();
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				if (CoreMobile.checkErrors(setHttpService))
+				{
+					CoreMobile.sharedObject.data.emailTextInput_text = emailTextInput.text;
+					CoreMobile.sharedObject.data.passwordTextInput_text = passwordTextInput.text;
+					
+					CoreMobile.saveSharedObject();
+					
+					FlexGlobals.topLevelApplication.viewNavigator.popAll();
+					FlexGlobals.topLevelApplication.viewNavigator.pushView(CoreMobile.mainView);
+				}
+				else
+				{
+					inProgress = false;
+					passwordTextInput.errorString = CoreMobile.translate.to(['password', 'incorrect']);
+					passwordTextInput.setFocus();
+				}
+			}
+			
+			protected function clearButton_clickHandler(event:MouseEvent):void
+			{
+				CoreMobile.clearAllComponents(this);
+				
+				CoreMobile.sharedObject.data.emailTextInput_text = '';
+				CoreMobile.sharedObject.data.passwordTextInput_text = '';
+				
+				CoreMobile.saveSharedObject();
+			}
+			
+			protected function emailTextInput_keyDownHandler(event:KeyboardEvent):void
+			{
+				if (event.keyCode == 13)
+				{
+					passwordTextInput.setFocus();
+				}
+			}
+			
+			protected function passwordTextInput_keyDownHandler(event:KeyboardEvent):void
+			{
+				if (event.keyCode == 13)
+				{
+					stage.focus = null;
+					enterButton_clickHandler(null);
+				}
+			}
+			
+			protected function emailTextInput_creationCompleteHandler(event:FlexEvent):void
+			{
+				emailTextInput.setFocus();
+				emailTextInput.requestSoftKeyboard();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<views:content>
+		<s:VGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center" paddingTop="5" paddingBottom="5" paddingLeft="5" paddingRight="5">
+			<s:VGroup>
+				<extended:TextInputMobile id="emailTextInput" width="100%" height="100%" returnKeyLabel="{CoreMobile.translate.to(['далее'])}" prompt="{CoreMobile.translate.to(['логин'])}" validate="true" text="{CoreMobile.sharedObject.data.emailTextInput_text}" creationComplete="emailTextInput_creationCompleteHandler(event)" keyDown="emailTextInput_keyDownHandler(event)"/>
+				<extended:TextInputMobile id="passwordTextInput" width="100%" height="100%" returnKeyLabel="{CoreMobile.translate.to(['вход'])}" prompt="{CoreMobile.translate.to(['пароль'])}" validate="true" text="{CoreMobile.sharedObject.data.passwordTextInput_text}" displayAsPassword="true" keyDown="passwordTextInput_keyDownHandler(event)"/>
+				
+				<s:HGroup width="100%" height="100%">
+					<s:Button id="enterButton" width="100%" label="войти" icon="@Embed('file:////assets/icons/white/key_48.png')" click="enterButton_clickHandler(event)"/>
+					<s:Button id="clearButton" icon="@Embed('file:////assets/icons/white/paint_48.png')" click="clearButton_clickHandler(event)"/>
+				</s:HGroup>
+			</s:VGroup>  
+		</s:VGroup>	
+	</views:content>
+</views:BasicView>

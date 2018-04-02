@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="chart_bar_up"
+				   label="charts - by_contributions"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   noOnKeyDown="false"
+				   yesOnKeyDown="false"
+				   reloadButtonEnabled="true"
+				   
+				   getHttpServiceController="hajournal"
+				   
+				   refreshArray="{[Core.data.haContributions]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*">
+	<fx:Script>
+		<![CDATA[
+			import mx.charts.series.BarSeries;
+			import mx.collections.ArrayCollection;
+			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			
+			import engine.core.Core;
+			
+			[Bindable]
+			public var dataProvider:ArrayCollection;
+
+			override public function reloadFunction():void
+			{
+				if (dateSelector.initialised)
+				{
+					requestParams = new Object();
+					if (dateSelector.fromDateField.selectedDate || dateSelector.toDateField.selectedDate)
+					{
+						requestParams.from_date = dateSelector.fromDate ? Core.dateConvert(dateSelector.fromDate) : null;
+						requestParams.to_date = dateSelector.toDate ? Core.dateConvert(new Date(dateSelector.toDate.time + (24 * 60 * 60 * 1000 - 1))) : null;
+						super.reloadFunction();
+					}
+					else
+					{
+						super.reloadFunction();
+					}
+				}
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				if (getHttpService.lastResult.item)
+				{
+					contributionsSelectableList.filterListBySource(getHttpService.lastResult.item);
+					
+					var arrayCollection:ArrayCollection = new ArrayCollection();
+					for (var i:int = 0; i < contributionsSelectableList.dataProvider.length; i++) 
+					{
+						if (contributionsSelectableList.allMatterRadioButton.selected || (contributionsSelectableList.orRadioButton.selected && contributionsSelectableList.dataProvider[i]['selected']) || (!contributionsSelectableList.orRadioButton.selected && !contributionsSelectableList.dataProvider[i]['selected']))
+						{
+							var item:Object = new Object();
+							item['item_id'] = contributionsSelectableList.dataProvider[i]['@item_id'];
+							item['name'] = contributionsSelectableList.dataProvider[i]['@name'];
+							
+							if (incomeSelectableList.allMatterRadioButton.selected || incomeSelectableList.dataProvider[0]['selected'])
+							{
+								item['income'] = 0;
+							}
+							
+							if (incomeSelectableList.allMatterRadioButton.selected || incomeSelectableList.dataProvider[1]['selected'])
+							{
+								item['outcome'] = 0;
+							}
+							
+							arrayCollection.addItem(item);
+						}
+					}
+					
+					for (i = 0; i < getHttpService.lastResult.item.length(); i++) 
+					{
+						for (var j:int = 0; j < arrayCollection.length; j++) 
+						{
+							if (getHttpService.lastResult.item[i]['@contribution_id'] == arrayCollection[j]['item_id'])
+							{
+								if (getHttpService.lastResult.item[i]['@direction'] > 0)
+								{
+									arrayCollection[j]['income'] += getHttpService.lastResult.item[i]['@quantity'] * getHttpService.lastResult.item[i]['@price'];
+								}
+								else
+								{
+									arrayCollection[j]['outcome'] += getHttpService.lastResult.item[i]['@quantity'] * getHttpService.lastResult.item[i]['@price'];
+								}
+								
+								break;
+							}
+						}
+					}
+					
+					dataProvider = arrayCollection;
+					
+					dataProvider.sort = new Sort();
+					dataProvider.sort.fields = [new SortField('name', true, false)];
+					dataProvider.refresh();
+				}
+			}
+			
+			protected function incomeSelectableList_changeHandler(event:Event):void
+			{
+				getHttpService_resultFunction();
+			}
+			
+			protected function contributionsSelectableList_changeHandler(event:Event):void
+			{
+				getHttpService_resultFunction();
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<s:Scroller id="filtersGroup" width="200" height="100%">
+				<s:VGroup width="100%" height="100%" gap="5">
+					<components:DateSelector id="dateSelector" action="currentMonth" visible="{mode !== 'planning'}" includeInLayout="{mode !== 'planning'}" change="{reloadFunction()}"/>
+					<components:SelectableList id="incomeSelectableList" width="100%" orientation="columns" requestedColumnCount="2" selected="true" label="direction" column="@direction" dataProvider="{Core.toArrayList(Core.data.direction.dataProvider)}" change="incomeSelectableList_changeHandler(event)"/>
+					<components:SelectableList id="contributionsSelectableList" width="100%" height="100%" minHeight="100" radioButtonsEnabled="true" selected="true" label="contributions" column="@contribution_id" dataProvider="{Core.toArrayList(Core.data.haContributions.dataProvider)}" change="contributionsSelectableList_changeHandler(event)"/>
+				</s:VGroup>
+			</s:Scroller>
+			<components:FieldSet width="100%" height="100%">
+				<components:content>
+					<s:HGroup width="100%" height="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+						<mx:BarChart id="barChart" width="100%" height="100%" color="{Core.black}" showDataTips="true" dataProvider="{dataProvider}">
+							<mx:verticalAxis>
+								<mx:CategoryAxis categoryField="name"/>
+							</mx:verticalAxis>
+							
+							<mx:series>
+								<mx:BarSeries yField="name" xField="income" displayName="{Core.translate.to(['income'])}">
+									<mx:fill>
+										<s:SolidColor color="{Core.lightGreen}" alpha="1"/>
+									</mx:fill>
+									<mx:stroke>
+										<s:SolidColorStroke color="{Core.black}" weight="1" alpha="0.5"/>
+									</mx:stroke>
+								</mx:BarSeries>
+								<mx:BarSeries yField="name" xField="outcome" displayName="{Core.translate.to(['outcome'])}">
+									<mx:fill>
+										<s:SolidColor color="{Core.lightRed}" alpha="1"/>
+									</mx:fill>
+									<mx:stroke>
+										<s:SolidColorStroke color="{Core.black}" weight="1" alpha="0.5"/>
+									</mx:stroke>
+								</mx:BarSeries>
+							</mx:series>
+						</mx:BarChart>
+						
+						<mx:Legend dataProvider="{barChart}" color="{Core.black}"/>
+					</s:HGroup>
+				</components:content>
+			</components:FieldSet>
+			
+			<!--<components:FieldSet width="100%" height="100%">
+				<components:content>
+					<s:HGroup width="100%" height="100%" paddingTop="5" gap="5">
+						<mx:BarChart id="outcomeBarChart" width="100%" height="100%" color="{Core.darkBlue}" showDataTips="true" dataProvider="{dataProvider}" series="{series}"/>
+						<mx:Legend dataProvider="{outcomeBarChart}" color="{Core.darkBlue}"/>
+					</s:HGroup>
+				</components:content>
+			</components:FieldSet>-->
+		</s:HGroup>
+	</components:content>
+</components:Window>
+

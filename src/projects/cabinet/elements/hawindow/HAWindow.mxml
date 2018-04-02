@@ -1,0 +1,765 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="home"
+				   label="she_free home_accounting"
+				   dockLabel="home_accounting"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   noOnKeyDown="false"
+				   yesOnKeyDown="false"
+				   
+				   autoreloadEnabled="true"
+				   infoButtonEnabled="true"
+				   
+				   getHttpServiceController="{mode !== 'planning' ? 'hajournal' : 'haplanning'}"
+				   
+				   setHttpServiceController="{mode !== 'planning' ? 'hajournal' : 'haplanning'}"
+				   setHttpServiceAction="deletecompletely"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   autoreloadrRun="{numChildrenWindows == 0}"
+				   menuBarEnabled="{numChildrenWindows == 0}"
+				   coverGroupEnabled="{numChildrenWindows > 0}"
+				   
+				   refreshArray="{[Core.data.haContacts, Core.data.haContactsGroups, Core.data.haWallets, Core.data.haWalletsGroups, Core.data.haContributions, Core.data.haContributionsGroups]}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*">
+	
+	<!--label="home_accounting - paid {getDaysCount(Core.getItem(Core.accountData, '@module_id_1_expired'))} - ha_unpaid_version_message"-->
+
+	<fx:Declarations>
+		<s:HTTPService id="getPlanningHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (getHttpServiceModule.length > 0 ? getHttpServiceModule : Core.getHttpServiceModule) + (getHttpServiceModule.length > 0 || Core.getHttpServiceModule.length > 0 ? '/' : '') + 'haplanning'}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="getPlanningHttpService_invokeHandler(event)"
+					   result="getPlanningHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); getPlanningHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.core.ScrollPolicy;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.InvokeEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			import projects.cabinet.elements.hawindow.classes.PlanningEmulator;
+			
+			[Bindable]
+			private var income:Number = 0;
+			[Bindable]
+			private var outcome:Number = 0;
+			
+			[Bindable]
+			public var chartsDataProvider:ArrayCollection;
+			
+			override public function init():void
+			{
+				super.init();
+				
+				if (!Core.toBoolean(Core.accountData['@videotutorial']) && Core.api)
+				{
+					Core.callAfter(function():void
+					{
+						Core.launcher.launch('VideotutorialWindow');
+					}, 1000);
+				}
+			}
+			
+			public function addFunction():void
+			{
+				var window:Window = Core.launcher.launch('HAEditWindow', null, this, ['adding']);
+
+				window.changeValue('date', Core.dateConvert(new Date()), true, false, false);
+				window.changeValue('wallet_id', 1, true, false, false);
+				window.changeValue('contact_id', 1, true, false, false);
+				window.changeValue('quantity', 1, true, false, false);
+				window.changeValue('note', '', true, false, mode == 'planning' ? false : true);
+				
+				if (mode == 'planning')
+				{
+					window.changeValue('periodicity_id', 1, true, false, false);
+					window.changeValue('repeats', 0, true, false, false);
+					window.changeValue('weekdays', '1,1,1,1,1,1,1', true, false, true);
+				}
+			}
+			
+			public function editFunction():void
+			{
+				if (dataGridSet.dataGrid.selectedItem['@item_id'] > 0)
+				{
+					Core.launcher.launch('HAEditWindow', ObjectUtil.clone(dataGridSet.dataGrid.selectedItem), this, ['editing']);
+				}
+				else
+				{
+					var window:Window = Core.launcher.launch('HAEditWindow', null, this, ['adding', 'confirmation']);
+					window.injectData(clearItem(ObjectUtil.clone(dataGridSet.dataGrid.selectedItem)));
+				}
+			}
+			
+			public function copyFunction():void
+			{
+				var window:Window = Core.launcher.launch('HAEditWindow', null, this, ['adding', 'copying']);
+
+				var selectedItem:Object = clearItem(ObjectUtil.clone(dataGridSet.dataGrid.selectedItem));
+				selectedItem.@item_id = null;
+				window.injectData(selectedItem);
+				window.changeValue('date', Core.dateConvert(new Date()), true, false, true);
+			}
+			
+			private function clearItem(selectedItem:Object):Object
+			{
+				selectedItem['@contribution'] = null;
+				selectedItem['@contact'] = null;
+				selectedItem['@paint4'] = null;
+				selectedItem['@paint5'] = null;
+				selectedItem['@periodicity'] = null;
+				selectedItem['@comment'] = null;
+				selectedItem['@income'] = null;
+				selectedItem['@outcome'] = null;
+				/*selectedItem['@sum'] = null;*/
+				selectedItem['@archived'] = null;
+				selectedItem['@wallet'] = null;
+				selectedItem['@contribution'] = null;
+				
+				return selectedItem;
+			}
+			
+			public function deleteFunction():void
+			{
+				var window:Window = Core.launcher.launch('ConfirmWindow');
+				window.parentWindow = this;
+				
+				window['onYesFunction'] = function():void
+				{
+					requestParams = new Object();
+					var item_id:Array = new Array();
+					var planned_id:Array = new Array();
+					var index_id:Array = new Array();
+					
+					for (var i:int = 0; i < dataGridSet.dataGrid.selectedItems.length; i++)
+					{
+						if (dataGridSet.dataGrid.selectedItems[i]['@item_id'] > 0)
+						{
+							item_id.push(dataGridSet.dataGrid.selectedItems[i].@item_id);
+						}
+						else
+						{
+							planned_id.push(dataGridSet.dataGrid.selectedItems[i].@planned_id);
+							index_id.push(dataGridSet.dataGrid.selectedItems[i].@index_id);
+						}
+					}
+					
+					requestParams.item_id = item_id.length > 0 ? item_id.toString() : null;
+					requestParams.planned_id = planned_id.length > 0 ? planned_id.toString() : null;
+					requestParams.index_id = index_id.length > 0 ? index_id.toString() : null;
+					setHttpService.send(requestParams);
+					
+					/*if (dataGridSet.dataGrid.selectedItem['@item_id'] > 0)
+					{
+						var array:Array = new Array();
+						for (var i:int = 0; i < dataGridSet.dataGrid.selectedItems.length; i++)
+						{
+							array.push(dataGridSet.dataGrid.selectedItems[i].@item_id);
+						}
+						
+						requestParams.item_id = array.toString();
+						setHttpServiceAction = mode !== 'planning' ? 'delete' : 'deletecompletely';
+						setHttpService.send(requestParams);
+					}
+					else
+					{
+						var item:Object = ObjectUtil.clone(dataGridSet.dataGrid.selectedItem);
+						for (i = 0; i < item.attributes().length(); i++)
+						{
+							requestParams[String(item.attributes()[i].name())] = item.attributes()[i];
+						}
+						requestParams.item_id = null;
+						requestParams.archived = 1;
+						setHttpServiceAction = 'set';
+						setHttpService.send(requestParams);
+					}*/
+					
+					Core.removeWindow(window);
+				};
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				reloadFunction();
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				if (mode !== 'planning')
+				{
+					getPlanningHttpService.send();
+				}
+				else
+				{
+					dataGridSet.dataProvider = getHttpService.lastResult ? getHttpService.lastResult.item : null;
+					processGetHttpServicesResults();
+				}
+			}
+			
+			private function processGetHttpServicesResults():void
+			{
+				if (dataGridSet.dataProvider)
+				{
+					for (var i:int = 0; i < dataGridSet.dataProvider.length(); i++) 
+					{
+						dataGridSet.dataProvider[i].@contribution = Core.getItemValue(Core.data.haContributions.dataProvider, '@item_id', dataGridSet.dataProvider[i].@contribution_id, '@name');
+						dataGridSet.dataProvider[i].@contact = Core.getItemValue(Core.data.haContacts.dataProvider, '@item_id', dataGridSet.dataProvider[i].@contact_id, '@name');
+						dataGridSet.dataProvider[i].@wallet = Core.getItemValue(Core.data.haWallets.dataProvider, '@item_id', dataGridSet.dataProvider[i].@wallet_id, '@name');
+						
+						if (String(dataGridSet.dataProvider[i].@comment) == '')
+						{
+							dataGridSet.dataProvider[i].@comment = dataGridSet.dataProvider[i].@note;							
+						}
+						
+						if (mode == 'planning')
+						{
+							dataGridSet.dataProvider[i].@periodicity = Core.getItemValue(Core.data.periodicity.dataProvider, '@item_id', dataGridSet.dataProvider[i].@periodicity_id, '@name');
+							
+							if (dataGridSet.dataProvider[i].@periodicity_id == 2)
+							{
+								var weekdaysArray:Array = String(dataGridSet.dataProvider[i].@weekdays).split(',');
+								var array:Array = new Array();
+								for (var j:int = 0; j < weekdaysArray.length; j++) 
+								{
+									if (weekdaysArray[j] == 1)
+									{
+										switch(j)
+										{
+											case 0:
+											{
+												array.push(Core.translate.to(['sun']));
+												break;
+											}
+												
+											case 1:
+											{
+												array.push(Core.translate.to(['mon']));
+												break;
+											}
+												
+											case 2:
+											{
+												array.push(Core.translate.to(['tue']));
+												break;
+											}
+												
+											case 3:
+											{
+												array.push(Core.translate.to(['wed']));
+												break;
+											}
+												
+											case 4:
+											{
+												array.push(Core.translate.to(['thu']));
+												break;
+											}
+												
+											case 5:
+											{
+												array.push(Core.translate.to(['fri']));
+												break;
+											}
+												
+											case 6:
+											{
+												array.push(Core.translate.to(['sat']));
+												break;
+											}
+												
+											default:
+											{
+												break;
+											}
+										}
+									}
+								}
+								
+								dataGridSet.dataProvider[i].@periodicity += ' (' + array.toString() + ')';
+							}
+							else if (dataGridSet.dataProvider[i].@periodicity_id == 7)
+							{
+								dataGridSet.dataProvider[i].@periodicity = Core.replaceAll(dataGridSet.dataProvider[i].@periodicity, ' n ', ' ' + dataGridSet.dataProvider[i].@every_n_days + ' ');
+							}
+							
+							dataGridSet.dataProvider[i].@repeats_done = Core.toArrayFromString(dataGridSet.dataProvider[i].@index_id).length;
+							if (dataGridSet.dataProvider[i].@periodicity_id > 1 && dataGridSet.dataProvider[i].@repeats > 0)
+							{
+								dataGridSet.dataProvider[i].@periodicity += ' \n repeats_of left ' + (dataGridSet.dataProvider[i].@repeats - dataGridSet.dataProvider[i].@repeats_done);
+							}
+						}
+						
+						dataGridSet.dataProvider[i].@sum = dataGridSet.dataProvider[i].@quantity * dataGridSet.dataProvider[i].@price;
+						dataGridSet.dataProvider[i].@sum = Math.round(dataGridSet.dataProvider[i].@sum * 100) / 100;
+						
+						if (Core.toBoolean(dataGridSet.dataProvider[i].@direction))
+						{
+							dataGridSet.dataProvider[i].@income = dataGridSet.dataProvider[i].@sum;
+							dataGridSet.dataProvider[i].@paint4 = Core.toBoolean(dataGridSet.dataProvider[i].@do_not_consider) ? Core.darkGray : Core.veryDarkGreen;
+						}
+						else
+						{
+							dataGridSet.dataProvider[i].@outcome = dataGridSet.dataProvider[i].@sum;
+							dataGridSet.dataProvider[i].@paint5 = Core.toBoolean(dataGridSet.dataProvider[i].@do_not_consider) ? Core.darkGray : Core.darkRed;
+						}
+					}
+				}
+				
+				dataGridSet.translate();
+				
+				contactsSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				walletsSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				contributionsSelectableList.filterListBySource(dataGridSet.dataGrid.dataProvider.source);
+				
+				refreshInfoText();
+			}
+			
+			private function planningEmulate():void
+			{
+				dataGridSet.dataProvider = getHttpService.lastResult ? getHttpService.lastResult.item : null;
+				
+				if (mode !== 'planning' && getPlanningHttpService.lastResult)
+				{
+					PlanningEmulator.init(getPlanningHttpService.lastResult.item, dataGridSet, dateSelector, displayPlannedsCheckBox);
+				}
+				
+				processGetHttpServicesResults();
+			}
+			
+			override public function reloadFunction():void
+			{
+				if (dateSelector.initialised)
+				{
+					requestParams = new Object();
+					if (dateSelector.fromDateField.selectedDate || dateSelector.toDateField.selectedDate)
+					{
+						requestParams.from_date = dateSelector.fromDate ? Core.dateConvert(dateSelector.fromDate) : null;
+						requestParams.to_date = dateSelector.toDate ? Core.dateConvert(new Date(dateSelector.toDate.time + (24 * 60 * 60 * 1000 - 1))) : null;
+						
+						super.reloadFunction();
+					}
+					else
+					{
+						super.reloadFunction();
+					}
+				}
+			}
+			
+			private function refreshInfoText():void
+			{
+				if (mode !== 'planning' && dataGridSet.dataGrid.dataProvider)
+				{
+					income = 0;
+					outcome = 0;
+					
+					for (var i:int = 0; i < dataGridSet.dataGrid.dataProvider.length; i++) 
+					{
+						if ((!Core.toBoolean(dataGridSet.dataGrid.dataProvider[i].@do_not_consider) || ignoreParameterDoNotConsiderCheckBox.selected) && (dataGridSet.dataGrid.dataProvider[i].@item_id > 0 || considerUnconfirmedsCheckBox.selected))
+						{
+							if (Core.toBoolean(dataGridSet.dataGrid.dataProvider[i].@direction))
+							{
+								income += Math.round(Core.toNumber(dataGridSet.dataGrid.dataProvider[i].@sum) * 100) / 100;
+							}
+							else
+							{
+								outcome += Math.round(Core.toNumber(dataGridSet.dataGrid.dataProvider[i].@sum) * 100) / 100;
+							}							
+						}
+					}
+					
+					var difference:Number = income - outcome;
+					difference = Math.round(difference * 100) / 100;
+					dataGridSet.infoText = Core.translate.to(['income']) + ': <font color="0x' + Core.veryDarkGreen.toString(16) + '">' + Math.round(income * 100) / 100 + '</font> | ' + Core.translate.to(['outcome']) + ': <font color="0x' + Core.darkRed.toString(16) + '">' + Math.round(outcome * 100) / 100 + '</font> | ' + Core.translate.to(['difference']) + ': <font color="0x' + (difference > 0 ? Core.darkBlue.toString(16) : Core.darkRed.toString(16)) + '">' + difference + '</font>';
+				}
+				else
+				{
+					dataGridSet.infoText = '';
+				}
+				
+				processChart();
+			}
+			
+			override public function menuFill():void
+			{
+				menu = new ArrayCollection(
+					[
+						/*{label: Core.translate.to(['actions']), children: new ArrayCollection([
+							{label: Core.translate.to(['do_transfer money']), action: '', enabled: false},
+						])},*/
+						{label: Core.translate.to(['references']), children: new ArrayCollection([
+							{label: Core.translate.to(['contributions']), action: 'HAContributionsReferenceWindow', enabled: true, parentWindow: this},
+							{label: Core.translate.to(['wallets']), action: 'HAWalletsReferenceWindow', enabled: true, parentWindow: this},
+							{label: Core.translate.to(['contacts']), action: 'HAContactsReferenceWindow', enabled: true, parentWindow: this},
+							/*{label: Core.translate.to(['currency']), action: '', enabled: false},*/
+						])},
+						/*{label: Core.translate.to(['reports']), enabled: false, children: new ArrayCollection([
+						])},*/
+						/*{label: Core.translate.to(['charts']), enabled: true, children: new ArrayCollection([
+							{label: Core.translate.to(['by_contributions']), action: 'HAByContributionsChartWindow', enabled: true, parentWindow: null},
+						])}*/
+					]);
+			}
+			
+			protected function getPlanningHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				inProgress = true;
+			}
+			
+			protected function getPlanningHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				
+				if (checkForErrors)
+				{
+					Core.checkErrors(getPlanningHttpService, label, checkForOnline);
+				}
+				
+				planningEmulate();
+			}
+			
+			protected function getPlanningHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+			}
+			
+			[Bindable]
+			override public function set mode(value:String):void
+			{
+				super.mode = value;
+				
+				dataGridSet.dataProvider = null;
+			}
+			
+			
+			protected function payButton_clickHandler(event:MouseEvent):void
+			{
+				Core.launcher.launch('PayModuleWindow', null, this);
+			}
+			
+			private function getDaysCount(date:Object):String
+			{
+				var time:Number = Core.dateFromString(String(date)).time - new Date().time;
+				
+				if (time > 0)
+				{
+					time = Math.round(time / 1000 / 60 / 60 / 24);
+				}
+				else
+				{
+					time = 0;
+				}
+				
+				return time + ' (' + Core.translate.to(['days']) + ')';
+			}
+			
+			override public function infoFunction():void
+			{
+				Core.launcher.launch('HelpWindow');
+			}
+			
+			private function processChart():void
+			{
+				if (dataGridSet.dataGrid.dataProvider && (mode == 'chart' || mode == 'pie_chart'))
+				{
+					var arrayCollection:ArrayCollection = new ArrayCollection();
+					for (var i:int = 0; i < contributionsSelectableList.dataProvider.length; i++) 
+					{
+						if (contributionsSelectableList.allMatterRadioButton.selected || (contributionsSelectableList.orRadioButton.selected && contributionsSelectableList.dataProvider[i]['selected']) || (!contributionsSelectableList.orRadioButton.selected && !contributionsSelectableList.dataProvider[i]['selected']))
+						{
+							var item:Object = new Object();
+							item['item_id'] = contributionsSelectableList.dataProvider[i]['@item_id'];
+							item['name'] = contributionsSelectableList.dataProvider[i]['@name'];
+							
+							if (incomeSelectableList.allMatterRadioButton.selected || incomeSelectableList.dataProvider[0]['selected'])
+							{
+								item['income'] = 0;
+							}
+							
+							if (incomeSelectableList.allMatterRadioButton.selected || incomeSelectableList.dataProvider[1]['selected'])
+							{
+								item['outcome'] = 0;
+							}
+							
+							arrayCollection.addItem(item);
+						}
+					}
+					
+					for (i = 0; i < dataGridSet.dataGrid.dataProvider.length; i++)
+					{
+						for (var j:int = 0; j < arrayCollection.length; j++) 
+						{
+							if (dataGridSet.dataGrid.dataProvider[i]['@contribution_id'] == arrayCollection[j]['item_id'])
+							{
+								if ((!Core.toBoolean(dataGridSet.dataGrid.dataProvider[i].@do_not_consider) || ignoreParameterDoNotConsiderCheckBox.selected) && (dataGridSet.dataGrid.dataProvider[i].@item_id > 0 || considerUnconfirmedsCheckBox.selected))
+								{
+									if (dataGridSet.dataGrid.dataProvider[i]['@direction'] > 0)
+									{
+										arrayCollection[j]['income'] += dataGridSet.dataGrid.dataProvider[i]['@quantity'] * dataGridSet.dataGrid.dataProvider[i]['@price'];
+										arrayCollection[j]['income'] = Math.round(arrayCollection[j]['income'] * 100) / 100
+									}
+									else
+									{
+										arrayCollection[j]['outcome'] += dataGridSet.dataGrid.dataProvider[i]['@quantity'] * dataGridSet.dataGrid.dataProvider[i]['@price'];
+										arrayCollection[j]['outcome'] = Math.round(arrayCollection[j]['outcome'] * 100) / 100
+									}
+								}
+								
+								break;
+							}
+						}
+					}
+					
+					chartsDataProvider = arrayCollection;
+					
+					chartsDataProvider.sort = new Sort();
+					chartsDataProvider.sort.fields = [new SortField('name', true, false)];
+					chartsDataProvider.refresh();
+				}
+			}
+			
+			private function displayGold(data:Object, field:String, index:Number, percentValue:Number):String
+			{
+				var temp:Number = Math.round(Core.toNumber((" " + percentValue).substr(0,6)) * 100) / 100;
+				
+				if (data.income > 0)
+				{
+					return data.name + ": " + '\n' + Core.translate.to(['sum']) + ": " + Math.round(data.income * 100) / 100 + '\n' + temp + "%";					
+				}
+				else
+				{
+					return data.name + ": " + '\n' + Core.translate.to(['sum']) + ": " + Math.round(data.outcome * 100) / 100 + '\n' + temp + "%";
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:topAddon>
+		<s:Group width="100%">
+			<components:Background color="{Core.lightGray}" left="5" right="5" top="5" bottom="6"/>
+			<components:Border left="5" right="5" top="5" bottom="6"/>
+			
+			<s:HGroup width="100%" left="5" right="5" top="5" bottom="6" gap="-1" enabled="{!inProgress &amp;&amp; numChildrenWindows == 0}">
+				<s:HGroup width="100%" left="5" right="5" top="5" bottom="6" gap="-1" visible="{mode == '' || mode == 'planning'}" includeInLayout="{mode == '' || mode == 'planning'}">
+					<components:Button paddingWidth="{width > 1200 ? 5 : 5}" enabled="{dataGridSet.addButton.includeInLayout}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.green}" overColor="{Core.lightGreen}" downColor="{Core.darkGreen}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="plus" label="{width > 1200 ? Core.translate.to(['add']) : Core.translate.to(['add'])}" toolTip="{Core.translate.to(['add'])}" click="addFunction()"/>
+					
+					<s:HGroup gap="-1" visible="{dataGridSet.editButton.includeInLayout}" includeInLayout="{dataGridSet.editButton.includeInLayout}">
+						<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+						
+						<components:Button paddingWidth="{width > 1200 ? 5 : 5}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="{dataGridSet.editButtonIcon}" label="{width > 1200 ? Core.translate.to([dataGridSet.editButtonTooltip]) : Core.translate.to([dataGridSet.editButtonTooltip])}" toolTip="{Core.translate.to([dataGridSet.editButtonTooltip])}" click="editFunction()"/>
+						<components:Button paddingWidth="{width > 1200 ? 5 : 5}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="copy" label="{width > 1200 ? Core.translate.to(['do_copy']) : Core.translate.to(['do_copy'])}" toolTip="{Core.translate.to(['do_copy'])}" click="copyFunction()"/>
+						
+						<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+						
+						<components:Button paddingWidth="{width > 1200 ? 5 : 5}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.red}" overColor="{Core.lightRed}" downColor="{Core.darkRed}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="minus" label="{width > 1200 ? Core.translate.to(['delete']) : Core.translate.to(['delete'])}" toolTip="{Core.translate.to(['delete'])}" click="deleteFunction()"/>					
+					</s:HGroup>
+				</s:HGroup>
+				
+				<s:Spacer width="100%"/>
+				
+				<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<components:Button paddingWidth="5" selected="{mode == ''}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="clock" label="{Core.translate.to(['income / outcome'])}" click="{mode = ''; reloadFunction()}"/>
+				<components:Button paddingWidth="{width > 1200 || maximized ? 5 : 2}" selected="{mode == 'chart'}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="chart_bar_up" label="{width > 1200 || maximized ? Core.translate.to(['charts']) : ''}" toolTip="{Core.translate.to(['charts'])}" click="{mode = 'chart'; reloadFunction()}"/>
+				<components:Button paddingWidth="{width > 1200 ? 5 : 2}" selected="{mode == 'pie_chart'}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="chart_pie" label="{width > 1200 ? Core.translate.to(['pie_charts']) : ''}" toolTip="{Core.translate.to(['pie_charts'])}" click="{mode = 'pie_chart'; reloadFunction()}"/>
+				
+				<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<components:Button paddingWidth="5" selected="{mode == 'planning'}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="calendar" label="{Core.translate.to(['planning'])}" click="{mode = 'planning'; reloadFunction()}"/>
+				
+				<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<!--<components:Button paddingWidth="5" enabled="false" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="smile_sad" label="{Core.translate.to(['debts / loans'])}" toolTip="{Core.translate.to(['debts / loans'])}" click="{Core.launcher.launch('', null, this)}"/>
+				
+				<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>
+				
+				<components:Button paddingWidth="5" enabled="false" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="safe" label="{Core.translate.to(['do_transfer money'])}" toolTip="{Core.translate.to(['do_transfer money'])}"/>
+				
+				<components:Splitter height="100%" backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}"/>-->
+				
+				<components:Button paddingWidth="{width > 1200 ? 5 : 2}" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="book_bookmark" label="{width > 1200 ? Core.translate.to(['reference_book']) : ''}" toolTip="{Core.translate.to(['reference_book - contributions'])}" click="{Core.launcher.launch('HAContributionsReferenceWindow', null, this)}"/>
+				<components:Button backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="wallet" toolTip="{Core.translate.to(['wallets'])}" click="{Core.launcher.launch('HAWalletsReferenceWindow', null, this)}"/>
+				<components:Button backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="man" toolTip="{Core.translate.to(['contacts'])}" click="{Core.launcher.launch('HAContactsReferenceWindow', null, this)}"/>
+				<!--<components:Button enabled="false" backgroundAlpha="{selected ? 1 : 0}" labelColor="{selected ? Core.white : Core.black}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="money" toolTip="{Core.translate.to(['currency'])}"/>-->
+			</s:HGroup>
+			
+		</s:Group>
+	</components:topAddon>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			
+			<s:Scroller id="filtersGroup" width="200" height="100%">
+				<s:VGroup width="100%" height="100%" gap="5">
+					<components:DateSelector id="dateSelector" action="currentMonth" visible="{mode !== 'planning'}" includeInLayout="{mode !== 'planning'}" change="{reloadFunction()}"/>
+					
+					<components:SelectableList id="incomeSelectableList" width="100%" orientation="columns" requestedColumnCount="2" selected="{Core.api ? false : true}" label="direction" column="@direction" dataProvider="{Core.toArrayList(Core.data.direction.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+					
+					<components:SelectableList id="contactsSelectableList" width="100%" maxHeight="200" radioButtonsEnabled="true" selected="{Core.api ? false : true}" label="contacts" column="@contact_id" dataProvider="{Core.toArrayList(Core.data.haContacts.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+					<components:SelectableList id="walletsSelectableList" width="100%" maxHeight="200" radioButtonsEnabled="true" selected="{Core.api ? false : true}" label="wallets" column="@wallet_id" dataProvider="{Core.toArrayList(Core.data.haWallets.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+					<components:SelectableList id="contributionsSelectableList" width="100%" height="100%" minHeight="100" radioButtonsEnabled="true" selected="true" label="contributions" column="@contribution_id" dataProvider="{Core.toArrayList(Core.data.haContributions.dataProvider)}" change="{dataGridSet.filter_changeHandler()}"/>
+				</s:VGroup>
+			</s:Scroller>
+			
+			<components:DataGridSet id="dataGridSet"
+									width="100%"
+									height="100%"
+									
+									visible="{mode == '' || mode == 'planning'}"
+									includeInLayout="{mode == '' || mode == 'planning'}"
+									
+									translateColumns="@contribution, @contact, @wallet, @periodicity"
+									sortFields="{[new SortField('@date', true, false)]}"
+									numericFields="@income, @outcome, @rate"
+									
+									reloadOnLocalesChange="true"
+									
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{!inProgress &amp;&amp; numChildrenWindows == 0}"
+									
+									filterFunctionsArray="{[incomeSelectableList.filterFunction, contactsSelectableList.filterFunction, walletsSelectableList.filterFunction, contributionsSelectableList.filterFunction]}"
+									clearFunctionsArray="{[incomeSelectableList.clear, contactsSelectableList.clear, walletsSelectableList.clear, contributionsSelectableList.clear]}"
+									
+									onFilterFunction="{refreshInfoText}"
+									
+									addFunction="{addFunction}"
+									
+									editFunction="{editFunction}"
+									editButtonIcon="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@item_id') > 0 ? 'pencil' : 'checkmark'}"
+									editButtonTooltip="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@item_id') > 0 ? 'edit' : 'confirm'}"
+
+									copyFunction="{copyFunction}"
+									deleteFunction="{deleteFunction}"
+									reloadFunction="{reloadFunction}">
+				
+				<components:bottomAddon>
+					<components:Button backgroundAlpha="{selected ? 1 : 0}" color="{Core.blue}" defaultIconColor="{selected ? 'white' : 'gray'}" icon="contrast" toolTip="{Core.translate.to(['display', 'filters'])}" click="{filtersGroup.visible = !filtersGroup.visible; filtersGroup.includeInLayout = !filtersGroup.includeInLayout; callLater(checkSize)}"/>
+				</components:bottomAddon>
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="115" headerText="{mode !== 'planning' ? Core.translate.to(['date']) : Core.translate.to(['start_date'])}" dataField="@date" itemRenderer="engine.itemrenderrers.DateAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="150" headerText="{Core.translate.to(['contribution'])}" dataField="@contribution"/>
+					<mx:AdvancedDataGridColumn width="70" headerText="{Core.translate.to(['quantity'])}" dataField="@quantity" textAlign="right"/>
+					<mx:AdvancedDataGridColumn width="70" headerText="{Core.translate.to(['price'])}" dataField="@price" textAlign="right"/>
+					<mx:AdvancedDataGridColumn width="70" headerText="{Core.translate.to(['income'])}" dataField="@income" color="{Core.veryDarkGreen}" textAlign="right" itemRenderer="engine.itemrenderrers.PaintAdvancedDataGridItemRenderer"/>
+					<mx:AdvancedDataGridColumn width="70" headerText="{Core.translate.to(['outcome'])}" dataField="@outcome" color="{Core.darkRed}" textAlign="right" itemRenderer="engine.itemrenderrers.PaintAdvancedDataGridItemRenderer"/>
+					<!--<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['currency'])}" dataField="@currency"/>
+					<mx:AdvancedDataGridColumn width="60" headerText="{Core.translate.to(['rate'])}" dataField="@rate" textAlign="right"/>-->
+					<mx:AdvancedDataGridColumn width="120" headerText="{Core.translate.to(['contact'])}" dataField="@contact"/>
+					<mx:AdvancedDataGridColumn width="120" headerText="{Core.translate.to(['wallet'])}" dataField="@wallet"/>
+					<mx:AdvancedDataGridColumn width="150" headerText="{Core.translate.to(['periodicity'])}" dataField="@periodicity" visible="{mode == 'planning'}"/>
+					<mx:AdvancedDataGridColumn headerText="{Core.translate.to(['note'])}" dataField="@comment"/>
+				</components:columns>
+			</components:DataGridSet>
+			
+			<components:FieldSet width="100%" height="100%" visible="{mode == 'chart' || mode == 'pie_chart'}" includeInLayout="{mode == 'chart' || mode == 'pie_chart'}">
+				<components:content>
+					<s:Group width="100%" height="100%" left="5" right="5" top="5" bottom="5">
+						<s:HGroup width="100%" height="100%" visible="{mode == 'chart'}" includeInLayout="{mode == 'chart'}" gap="5">
+							<mx:BarChart id="barChart" width="100%" height="100%" fontSize="{Core.size * Core.sizeMultiplier / 2}" color="{Core.black}" showDataTips="true" dataProvider="{chartsDataProvider}">
+								<mx:verticalAxis>
+									<mx:CategoryAxis categoryField="name"/>
+								</mx:verticalAxis>
+								
+								<mx:series>
+									<mx:BarSeries yField="name" xField="income" displayName="{Core.translate.to(['income'])}">
+										<mx:fill>
+											<s:SolidColor color="{Core.lightGreen}" alpha="1"/>
+										</mx:fill>
+										<mx:stroke>
+											<s:SolidColorStroke color="{Core.black}" weight="1" alpha="0.5"/>
+										</mx:stroke>
+									</mx:BarSeries>
+									<mx:BarSeries yField="name" xField="outcome" displayName="{Core.translate.to(['outcome'])}">
+										<mx:fill>
+											<s:SolidColor color="{Core.lightRed}" alpha="1"/>
+										</mx:fill>
+										<mx:stroke>
+											<s:SolidColorStroke color="{Core.black}" weight="1" alpha="0.5"/>
+										</mx:stroke>
+									</mx:BarSeries>
+								</mx:series>
+							</mx:BarChart>
+							
+							<mx:Legend fontSize="{Core.size * Core.sizeMultiplier / 2}" dataProvider="{barChart}" color="{Core.black}"/>
+						</s:HGroup>
+						
+						<s:HGroup width="100%" height="100%" visible="{mode == 'pie_chart'}" includeInLayout="{mode == 'pie_chart'}" gap="5">
+							<s:VGroup width="100%" height="100%" gap="5" visible="{income > 0}" includeInLayout="{income > 0}" horizontalAlign="center">
+								<s:Label height="{Core.size * Core.sizeMultiplier}" fontSize="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['income'])}"/>
+								
+								<mx:PieChart height="100%" width="100%" fontSize="{Core.size * Core.sizeMultiplier / 2}" showDataTips="true" dataProvider="{chartsDataProvider}">
+									<mx:series>
+										<mx:PieSeries labelPosition="callout" field="income" labelFunction="{displayGold}"/>
+									</mx:series>
+								</mx:PieChart>
+							</s:VGroup>
+
+							<s:VGroup width="100%" height="100%" gap="5" visible="{outcome > 0}" includeInLayout="{outcome > 0}" horizontalAlign="center">
+								<s:Label height="{Core.size * Core.sizeMultiplier}" fontSize="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['outcome'])}"/>
+								
+								<mx:PieChart height="100%" width="100%" fontSize="{Core.size * Core.sizeMultiplier / 2}" showDataTips="true" dataProvider="{chartsDataProvider}">
+									<mx:series>
+										<mx:PieSeries labelPosition="callout" field="outcome" labelFunction="{displayGold}"/>
+									</mx:series>
+								</mx:PieChart>
+							</s:VGroup>
+						</s:HGroup>  
+						
+					</s:Group>
+				</components:content>
+			</components:FieldSet>
+		</s:HGroup>
+	</components:content>
+	
+	<!--<components:buttonsAddon>
+		<components:Button id="payButton" visible="{Core.api}" includeInLayout="{Core.api}" backgroundAlpha="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 1 : 0}" color="{Core.orange}" overColor="{Core.lightOrange}" downColor="{Core.darkOrange}" defaultIconColor="{selected || childSelected || (parentWindow &amp;&amp; parentWindow.selected) ? 'white' : 'gray'}" icon="money" toolTip="{Core.translate.to(['pay'])}" labelColor="{Core.white}" click="payButton_clickHandler(event)"/>
+	</components:buttonsAddon>-->
+	
+	<components:rightAddon>
+		<s:HGroup height="100%" verticalAlign="middle" paddingRight="5" visible="{mode !== 'planning'}" includeInLayout="{mode !== 'planning'}">
+			
+			<components:VSplitter/>
+			
+			<extended:CheckBox id="ignoreParameterDoNotConsiderCheckBox" label="{Core.translate.to(['ignore parameter'])} [{Core.translate.to(['do_not consider'])}]" change="{refreshInfoText()}"/>
+			
+			<components:VSplitter/>
+			
+			<extended:CheckBox id="considerUnconfirmedsCheckBox" label="{Core.translate.to(['consider unconfirmeds'])}" toolTip="{Core.translate.to(['consider unconfirmeds and planneds'])}" change="{refreshInfoText()}"/>
+			
+			<components:VSplitter/>
+			
+			<extended:CheckBox id="displayPlannedsCheckBox" label="{Core.translate.to(['display planneds'])}" change="{reloadFunction()}"/>
+		</s:HGroup>  
+	</components:rightAddon>
+</components:Window>
+

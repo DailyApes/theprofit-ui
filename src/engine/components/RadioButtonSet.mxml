@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:FieldSet xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					 xmlns:s="library://ns.adobe.com/flex/spark" 
+					 xmlns:mx="library://ns.adobe.com/flex/mx"
+					 collapsible="true"
+					 xmlns:components="engine.components.*"
+					 xmlns:extended="engine.extended.*">
+	<fx:Metadata>
+		[Event(name="change", type="mx.events.ListEvent")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			import spark.events.IndexChangeEvent;
+			
+			import engine.core.Core;
+			
+			private var _dataProvider:ArrayCollection;
+			
+			[Bindable]
+			public var column:String;
+			
+			[Bindable]
+			public var labelField:String = '@name';
+			
+			[Bindable]
+			public var requestedColumnCount:Number = 1;
+			
+			[Bindable]
+			public var sortEnabled:Boolean = true;
+			[Bindable]
+			public var sortFields:Array;
+			
+			[Bindable]
+			public var selectedItem:Object;
+			
+			[Bindable]
+			[Inspectable(category="General", enumeration="rows,columns", defaultValue="rows")]
+			public var orientation:String;
+			
+			[Bindable]
+			public function set dataProvider(value:ArrayCollection):void
+			{
+				var listDataProvider:ArrayCollection = dataProvider;
+				
+				var filterFunction:Function;
+				
+				if (dataProvider && Boolean(dataProvider.filterFunction))
+				{
+					filterFunction = dataProvider.filterFunction;
+				}
+				
+				_dataProvider = value;
+				
+				
+				Core.translate.columns(dataProvider, labelField);
+				
+				if (sortEnabled)
+				{
+					var sort:Sort = new Sort();
+					sort.fields = sortFields ? sortFields : [new SortField(labelField)];
+					dataProvider.sort = sort;					
+				}
+				
+				dataProvider.filterFunction = filterFunction;
+				dataProvider.refresh();
+				
+				for (var i:int = 0; i < dataProvider.source.length; i++) 
+				{
+					for (var j:int = 0; j < listDataProvider.source.length; j++) 
+					{
+						if (dataProvider.source[i]['@item_id'] == listDataProvider.source[j]['@item_id'])
+						{
+							dataProvider.source[i].selected = listDataProvider.source[j].selected;
+							
+							break;
+						}
+					}
+				}
+			}
+			
+			public function get dataProvider():ArrayCollection
+			{
+				return _dataProvider;
+			}
+			
+			public function filterListBySource(source:Object):void
+			{
+				if (dataProvider)
+				{
+					dataProvider.filterFunction = listFilterFunction;
+					dataProvider.refresh();
+					
+					function listFilterFunction(item:Object):Boolean
+					{
+						if (source.length() > 0)
+						{
+							for (var i:int = 0; i < source.length(); i++) 
+							{
+								if (source[i][column] == item['@item_id'] || item.selected)
+								{
+									return true;
+								}
+							}	
+						}
+						else if (item.selected)
+						{
+							return true;
+						}
+						
+						return false;
+					}					
+				}
+			}
+			
+			public function filterFunction(item:Object):Boolean
+			{
+				var result:Boolean;
+				
+				for (var i:int = 0; i < dataProvider.source.length; i++)
+				{
+					if (dataProvider.source[i].selected == true)
+					{
+						result = String(dataProvider.source[i]['@item_id']).toLowerCase() == String(item[column]).toLowerCase();
+					}
+					
+					if (result)
+					{
+						return true;
+					}
+				}
+				
+				return false;
+			}
+			
+			public function clear():void
+			{
+				
+			}
+			
+			protected function list_clickHandler(event:MouseEvent):void
+			{
+				if (dataProvider.source)
+				{
+					for (var i:int = 0; i < dataProvider.source.length; i++)
+					{
+						dataProvider.source[i].selected = false;
+					}
+					
+					list.selectedItem.selected == true;
+					
+					dispatchEvent(new ListEvent('change'));
+				}
+			}
+			
+			/*protected function list_changeHandler(event:IndexChangeEvent):void
+			{
+				selectedItem = list.selectedItem;
+				
+				if (dataProvider.source)
+				{
+					for (var i:int = 0; i < dataProvider.source.length; i++)
+					{
+						dataProvider.source[i].selected = false;
+					}
+					
+					selectedItem.selected == true;
+				}
+				
+				dispatchEvent(new ListEvent('change'));
+			}*/
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:VGroup width="100%" height="100%" gap="-1">
+			<extended:List id="list" width="100%" height="100%" minHeight="0" contentBackgroundAlpha="0" borderVisible="false" labelField="{labelField}" dataProvider="{dataProvider}" horizontalScrollPolicy="off" itemRenderer="engine.itemrenderrers.RadioButtonListItemRenderer" click="list_clickHandler(event)">
+				<extended:layout>
+					<s:TileLayout orientation="{orientation}" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" columnAlign="justifyUsingGap" verticalGap="0" requestedColumnCount="{requestedColumnCount}"/>
+				</extended:layout>
+			</extended:List>
+		</s:VGroup>
+	</components:content>
+</components:FieldSet>

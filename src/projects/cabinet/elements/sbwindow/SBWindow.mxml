@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   minimizable="true"
+				   maximizable="true"
+				   maximized="false"
+				   
+				   icon="chart_pie"
+				   label="accounting for_small_businesses"
+				   dockLabel="home_accounting"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   noOnKeyDown="false"
+				   yesOnKeyDown="false"
+				   
+				   autoreloadEnabled="true"
+				   infoButtonEnabled="false"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			import engine.core.Core;
+			
+			override public function menuFill():void
+			{
+				menu = new ArrayCollection(
+					[
+						{label: Core.translate.to(['references']), children: new ArrayCollection([
+							/*{label: Core.translate.to(['contributions']), action: 'HAContributionsReferenceWindow', enabled: true, parentWindow: this},*/
+						])},
+					]);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<components:FieldSet width="100%" height="100%"/>
+		</s:HGroup>
+	</components:content>
+</components:Window>
+

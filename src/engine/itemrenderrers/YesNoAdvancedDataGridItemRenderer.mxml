@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXAdvancedDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+								  xmlns:s="library://ns.adobe.com/flex/spark" 
+								  xmlns:mx="library://ns.adobe.com/flex/mx"
+								  autoLayout="true"
+								  focusEnabled="true"
+								  autoDrawBackground="false">
+	
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="center"/>
+	</s:layout>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			[Bindable]
+			public var yes:Boolean;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				
+				if (data)
+				{
+					yes = Core.toBoolean(listData.label);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Label id="lblData" verticalAlign="middle" fontWeight="{yes ? 'bold' : 'bold'}" color="{yes ? Core.darkGreen : Core.darkRed}" text="{yes ? Core.translate.to(['yes']) : Core.translate.to(['no'])}"/>
+</s:MXAdvancedDataGridItemRenderer>

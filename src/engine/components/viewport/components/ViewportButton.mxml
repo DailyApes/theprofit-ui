@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 
+		 click="clickHandler(event)"
+		 
+		 mouseMove="mouseMoveHandler(event)"
+		 
+		 dragEnter="dragEnterHandler(event)"
+		 dragDrop="dragDropHandler(event)"
+		 
+		 creationComplete="creationCompleteHandler(event)"
+		 xmlns:components="engine.components.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.DragSource;
+			import mx.events.DragEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.DragManager;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			[Bindable]
+			public var targetWindow:Window;
+			
+			//contextMenus
+			[Bindable]
+			public var minimizeWindowContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var maximizeWindowContextMenuItem:ContextMenuItem;
+			
+			[Bindable]
+			public var closeWindowContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var closeAllWindowsContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var closeOthersWindowsContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var closeAllWindowsOnLeftContextMenuItem:ContextMenuItem;
+			[Bindable]
+			public var closeAllWindowsOnRightContextMenuItem:ContextMenuItem;
+			
+			public function init(targetWindow:Window):void
+			{
+				this.targetWindow = targetWindow;
+			}
+			
+			protected function clickHandler(event:MouseEvent):void
+			{
+				if (targetWindow.minimized || !targetWindow.selected)
+				{
+					Core.selectWindow(targetWindow);
+
+				}
+				else if (targetWindow.minimizable)
+				{
+					targetWindow.minimized = true;
+				}
+				
+				Core.application.viewport.regroup();
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				minimizeWindowContextMenuItem = new ContextMenuItem('', false, true, true);
+				minimizeWindowContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, minimizeWindowContextMenuItem_menuItemSelectHandler);
+				
+				maximizeWindowContextMenuItem = new ContextMenuItem('', false, true, true);
+				maximizeWindowContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, maximizeWindowContextMenuItem_menuItemSelectHandler);
+				
+				//--
+				
+				closeWindowContextMenuItem = new ContextMenuItem('', true, true, true);
+				closeWindowContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeWindowContextMenuItem_menuItemSelectHandler);
+				
+				closeAllWindowsContextMenuItem = new ContextMenuItem('', false, true, true);
+				closeAllWindowsContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeAllWindowsContextMenuItem_menuItemSelectHandler);
+				
+				closeOthersWindowsContextMenuItem = new ContextMenuItem('', false, true, true);
+				closeOthersWindowsContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeOthersWindowsContextMenuItem_menuItemSelectHandler);
+				
+				closeAllWindowsOnLeftContextMenuItem = new ContextMenuItem('', false, true, true);
+				closeAllWindowsOnLeftContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeAllWindowsOnLeftContextMenuItem_menuItemSelectHandler);	
+				
+				closeAllWindowsOnRightContextMenuItem = new ContextMenuItem('', false, true, true);
+				closeAllWindowsOnRightContextMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeAllWindowsOnRightContextMenuItem_menuItemSelectHandler);
+				
+				contextMenu = new ContextMenu();
+				contextMenu.addEventListener(ContextMenuEvent.MENU_SELECT, contextMenu_menuSelectHandler);
+			}
+			
+			protected function removeHandler(event:FlexEvent):void
+			{
+				minimizeWindowContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, minimizeWindowContextMenuItem_menuItemSelectHandler);
+				maximizeWindowContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, maximizeWindowContextMenuItem_menuItemSelectHandler);
+				
+				closeWindowContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeWindowContextMenuItem_menuItemSelectHandler);
+				closeAllWindowsContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeAllWindowsContextMenuItem_menuItemSelectHandler);
+				closeOthersWindowsContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeOthersWindowsContextMenuItem_menuItemSelectHandler);
+				closeAllWindowsOnLeftContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeAllWindowsOnLeftContextMenuItem_menuItemSelectHandler);
+				closeAllWindowsOnRightContextMenuItem.removeEventListener(ContextMenuEvent.MENU_ITEM_SELECT, closeAllWindowsOnRightContextMenuItem_menuItemSelectHandler);
+				
+				contextMenu.removeEventListener(ContextMenuEvent.MENU_SELECT, contextMenu_menuSelectHandler);
+			}
+			
+			private function minimizeWindowContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				targetWindow.minimizeButton_clickHandler(new MouseEvent('click'));
+			}
+			
+			private function maximizeWindowContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				targetWindow.maximizeButton_clickHandler(new MouseEvent('click'));
+			}
+			
+			private function closeWindowContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				targetWindow.closeButton_clickHandler(new MouseEvent('click'));
+			}
+			
+			private function closeAllWindowsContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				var windowsArray:Array = findWindows();
+				
+				for (var i:int = 0; i < windowsArray.length; i++) 
+				{
+					windowsArray[i].closeButton_clickHandler(new MouseEvent('click'));
+				}
+			}
+			
+			private function closeOthersWindowsContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				var windowsArray:Array = findWindows();
+				var array:Array = new Array();
+				
+				for (var i:int = 0; i < windowsArray.length; i++) 
+				{
+					if (windowsArray[i] !== targetWindow)
+					{
+						array.push(windowsArray[i]);
+					}
+				}
+				
+				for (i = 0; i < array.length; i++) 
+				{
+					array[i].closeButton_clickHandler(new MouseEvent('click'));
+				}
+			}
+			
+			private function closeAllWindowsOnLeftContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				var windowsArray:Array = findWindows();
+				var array:Array = new Array();
+				
+				for (var i:int = 0; i < windowsArray.length; i++) 
+				{
+					if (windowsArray[i] !== targetWindow)
+					{
+						array.push(windowsArray[i]);
+					}
+					else
+					{
+						break;
+					}
+				}
+				
+				for (i = 0; i < array.length; i++) 
+				{
+					array[i].closeButton_clickHandler(new MouseEvent('click'));
+				}
+			}
+			
+			private function closeAllWindowsOnRightContextMenuItem_menuItemSelectHandler(event:ContextMenuEvent):void
+			{
+				var windowsArray:Array = findWindows();
+				var array:Array = new Array();
+				
+				for (var i:int = windowsArray.length - 1; i >= 0; i--) 
+				{
+					if (windowsArray[i] !== targetWindow)
+					{
+						array.push(windowsArray[i]);
+					}
+					else
+					{
+						break;
+					}
+				}
+				
+				for (i = 0; i < array.length; i++) 
+				{
+					array[i].closeButton_clickHandler(new MouseEvent('click'));
+				}
+			}
+			
+			private function contextMenu_menuSelectHandler(event:ContextMenuEvent):void 
+			{
+				minimizeWindowContextMenuItem.caption = Core.translate.to(['minimize']);
+				minimizeWindowContextMenuItem.visible = targetWindow.minimizable;
+				
+				maximizeWindowContextMenuItem.caption = Core.translate.to(['maximize']);
+				maximizeWindowContextMenuItem.visible = targetWindow.maximizable;
+				
+				closeWindowContextMenuItem.caption = Core.translate.to(['close']);
+				closeWindowContextMenuItem.visible = targetWindow.closable && ((!targetWindow.inProgress && targetWindow.disableNavigation) || !targetWindow.disableNavigation);
+				
+				closeAllWindowsContextMenuItem.caption = Core.translate.to(['close alls windows']);
+				closeAllWindowsContextMenuItem.visible = true;
+				
+				closeOthersWindowsContextMenuItem.caption = Core.translate.to(['close others windows']);
+				closeOthersWindowsContextMenuItem.visible = true;
+				
+				closeAllWindowsOnLeftContextMenuItem.caption = Core.translate.to(['close alls windows on_left']);
+				closeAllWindowsOnLeftContextMenuItem.visible = true;
+				
+				closeAllWindowsOnRightContextMenuItem.caption = Core.translate.to(['close alls windows on_right']);
+				closeAllWindowsOnRightContextMenuItem.visible = true;
+				
+				contextMenu.hideBuiltInItems();
+				contextMenu.customItems = [minimizeWindowContextMenuItem, maximizeWindowContextMenuItem, closeWindowContextMenuItem, closeAllWindowsContextMenuItem, closeOthersWindowsContextMenuItem, closeAllWindowsOnLeftContextMenuItem, closeAllWindowsOnRightContextMenuItem];
+			}
+			
+			private function findWindows():Array
+			{
+				var array:Array = new Array();
+				
+				for (var i:int = 0; i < Core.windowsСache.length; i++) 
+				{
+					if (Core.windowsСache[i].parent)
+					{
+						if (Core.windowsСache[i].createViewportButton)
+						{
+							array.push(Core.windowsСache[i]);
+						}
+					}
+				}
+				
+				return array;
+			}
+			
+			protected function mouseMoveHandler(event:MouseEvent):void
+			{
+				var dragInitiator:ViewportButton = ViewportButton(event.currentTarget);
+				var dragSource:DragSource = new DragSource();
+				dragSource.addData(dragInitiator, "DockButton");
+				
+				DragManager.doDrag(dragInitiator, dragSource, event);
+			}
+			
+			protected function dragEnterHandler(event:DragEvent):void
+			{
+				if (event.dragSource.hasFormat("DockButton"))
+				{
+					DragManager.acceptDragDrop(ViewportButton(event.currentTarget));
+				}
+			}
+			
+			protected function dragDropHandler(event:DragEvent):void
+			{
+				Core.swapItems(Core.windowsСache, event.dragInitiator['targetWindow'], event.currentTarget['targetWindow']);
+				
+				Core.application.viewport.refresh();
+				Core.application.viewport.regroup();
+			}
+		]]>
+	</fx:Script>
+	
+	<!--<components:Button id="button" paddingWidth="5" icon="{targetWindow.icon.length > 0 ? targetWindow.icon : 'app'}" label="{targetWindow.label}" defaultIconColor="{targetWindow.selected || !targetWindow.minimized ? 'white' : 'gray'}" color="{targetWindow.selected ? Core.downColor : (!targetWindow.minimized ? Core.overColor : 0xFFFFFF)}" labelColor="{!targetWindow.minimized ? Core.white : Core.black}" overColor="{Core.blue}" backgroundAlpha="{targetWindow.selected || !targetWindow.minimized ? 1 : 0}"/>-->
+	<components:Button id="button" paddingWidth="5" icon="{targetWindow.icon.length > 0 ? targetWindow.icon : 'app'}" label="{targetWindow.dockLabel ? targetWindow.dockLabel : targetWindow.label}" defaultIconColor="white" color="{targetWindow.selected ? Core.downColor : (!targetWindow.minimized ? Core.overColor : 0xFFFFFF)}" labelColor="{!targetWindow.minimized ? Core.white : Core.black}" overColor="{Core.blue}" backgroundAlpha="{targetWindow.selected || !targetWindow.minimized ? 1 : 0}"/>
+</s:Group>

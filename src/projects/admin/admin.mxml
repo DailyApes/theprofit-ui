@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:components="engine.components.*"
+			   
+			   backgroundColor="0xffffff"
+			   color="0x000000"
+			   
+			   width="100%"
+			   height="100%"
+			   
+			   minWidth="0"
+			   minHeight="0"
+			   
+			   creationComplete="creationCompleteHandler(event)"
+			   
+			   mouseUp="mouseUpHandler(event)"
+			   
+			   fontSize="{Core.size * Core.sizeMultiplier / 2}"
+			   
+			   frameRate="120"
+			   
+			   xmlns:viewport="engine.components.viewport.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import mx.managers.ToolTipManager;
+			
+			import engine.core.Core;
+			
+			import projects.admin.managers.Data;
+			import projects.admin.managers.Launcher;
+			import projects.admin.managers.Menus;
+			
+			//do not change!!!
+			public var launcher:Launcher = new Launcher();
+			public var menus:Menus = new Menus();
+			public var data:Data = new Data();
+			
+			[Bindable]
+			public var startWindowItemsArray:Array = [
+				{type:'Button', label:'personals data', icon:'pencil', action:'PersonalDataWindow'},
+				{type:'HSplitter'},
+				{type:'Button', label:'accounts', icon:'man', action:'AccountsReferenceWindow'},
+				{type:'HSplitter'},
+				{type:'Button', label:'ideas', icon:'smile', action:'IdeasWindow'},
+				{type:'Button', label:'development', icon:'spanner', action:'DevelopmentWindow'},
+				{type:'HSplitter'},
+				{type:'Button', label:'locales', icon:'globe', action:'LocalesWindow'},
+				{type:'Button', label:'logs of_changes', icon:'calendar', action:'LogsReportWindow'},
+				{type:'Button', label:'text_editor', icon:'document', action:'TextEditorWindow'},
+				{type:'Button', label:'help_editor', icon:'info', action:'HelpEditorWindow'}
+			];
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				Core.serverUrl = 'ui';
+				
+				Core.getHttpServiceModule = 'admin';
+				Core.setHttpServiceModule = 'admin';
+				
+				Core.init();
+				
+				viewport.imageSource = Core.serverUrl + '/static/images/logo/logo.jpg';
+				
+				ToolTipManager.showDelay = 0;
+			}
+			
+			protected function mouseUpHandler(event:MouseEvent):void
+			{
+				stopDrag();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<viewport:Viewport id="viewport"/>
+	
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		@namespace components "engine.components.*";
+		@namespace wireframe "mx.skins.wireframe.*";
+		
+		*
+		{
+			verticalAlign: middle;
+			borderColor: #333333;
+			borderAlpha: 0.5;
+			chromeColor: #ffffff;
+		}
+		
+		mx|MenuBar
+		{
+			backgroundSkin: Embed("/assets/images/empty.png");
+			paddingLeft: 0;
+		}
+		
+		s|VScrollBar
+		{
+			skinClass: ClassReference("engine.skins.VScrollBarSkin");
+		}
+		
+		s|HScrollBar
+		{
+			skinClass: ClassReference("engine.skins.HScrollBarSkin");
+		}
+		
+		mx|ScrollBar
+		{
+			thumbSkin: ClassReference("engine.skins.ScrollBarThumbSkin");
+		}
+	</fx:Style>
+	
+</s:Application>

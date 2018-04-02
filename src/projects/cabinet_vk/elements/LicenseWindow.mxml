@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   icon="info"
+				   label="{step == 1 ? 'user_agreement' : 'privacy_policy'}"
+				   createViewportButton="false"
+				   
+				   windowsStackEnabled="false"
+				   maximizable="true"
+				   closable="false"
+				   
+				   width="{Math.round(Core.application.width / 1.10)}"
+				   height="{Math.round(Core.application.height / 1.25)}"
+				   
+				   yesButtonEnabled="true"
+				   yesButtonLabel="{'he_agree'} {step}/2"
+				   yesButtonIcon="null"
+				   
+				   reloadButtonEnabled="true"
+				   
+				   getHttpServiceController="texts"
+				   
+				   setHttpServiceController="licenceagreement"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:extended="engine.extended.*"
+				   xmlns:window="engine.components.window.*">
+	<fx:Script>
+		<![CDATA[
+			import engine.core.Core;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.elements.TextFlow;
+			
+			override public function init():void
+			{
+				super.init();
+				
+				Core.callAfter(function():void
+				{
+					maximized = false;
+				}, 100);
+			}
+			
+			override public function getHttpService_resultFunction():void
+			{
+				var result:Object = Core.checkErrors(getHttpService, label, false);
+				if (result == 0)
+				{
+					htmlText();
+				}
+			}
+			
+			override public function yesFunction():void
+			{
+				if (step == 1)
+				{
+					step += 1;
+					textArea.scroller.verticalScrollBar.value = 0;
+					//agreeCheckBox.selected = false;
+					htmlText();
+				}
+				else
+				{
+					setHttpService.send();
+					Core.removeWindow(this);
+					Core.identified = true;
+					
+					
+					//Core.application.viewport.switchStartWindow();
+					
+					Core.launcher.launch('HelpWindow');
+				}
+			}
+			
+			private function htmlText():void
+			{
+				var text:String = getHttpService.lastResult.item[step - 1]['@' + resourceManager.localeChain[0]];
+				var flow:TextFlow = TextConverter.importToFlow(text, TextConverter.TEXT_FIELD_HTML_FORMAT);
+				textArea.textFlow = flow;
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:Group width="100%" height="100%">
+			<components:FieldSet top="5" bottom="5" left="5" right="5">
+				<components:content>
+					<s:VGroup width="100%" height="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+						<extended:TextArea id="textArea" width="100%" height="100%" verticalAlign="top" editable="false"/>
+<!--						<extended:CheckBox id="agreeCheckBox" width="100%" label="{Core.translate.to(['i', 'he_agree'])}"/>-->
+					</s:VGroup>
+				</components:content>
+			</components:FieldSet>
+		</s:Group>
+	</components:content>
+</components:Window>

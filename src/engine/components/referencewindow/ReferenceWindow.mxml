@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   
+				   centered="true"
+				   doNotGroup="true"
+				   
+				   icon="book_bookmark"
+				   
+				   autoreloadEnabled="true"
+				   
+				   focusTarget="{dataGridSet}"
+				   
+				   autoreloadrRun="{numChildrenWindows == 0}"
+				   menuBarEnabled="{numChildrenWindows == 0}"
+				   coverGroupEnabled="{numChildrenWindows > 0}"
+				   
+				   xmlns:components="engine.components.*"
+				   xmlns:window="engine.components.window.*"
+				   xmlns:extended="engine.extended.*">
+	
+	<fx:Declarations>
+		<s:HTTPService id="getGroupsHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (getGroupsHttpServiceModule.length > 0 ? getGroupsHttpServiceModule : Core.getHttpServiceModule) + (getGroupsHttpServiceModule.length > 0 || Core.getHttpServiceModule.length > 0 ? '/' : '') + getGroupsHttpServiceController + (getGroupsHttpServiceAction.length > 0 ? '/' : '') +  getGroupsHttpServiceAction}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="getGroupsHttpService_invokeHandler(event)"
+					   result="getGroupsHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); getGroupsHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+		
+		<s:HTTPService id="setGroupsHttpService"
+					   method="POST"
+					   url="{Core.serverUrl + (Core.yii ? '/?r=' : '/') + (setGroupsHttpServiceModule.length > 0 ? setGroupsHttpServiceModule : Core.setHttpServiceModule) + (setGroupsHttpServiceModule.length > 0 || Core.setHttpServiceModule.length > 0 ? '/' : '') + setGroupsHttpServiceController + (setGroupsHttpServiceAction.length > 0 ? '/' : '') +  setGroupsHttpServiceAction}"
+					   requestTimeout="{Core.requestTimeout}"
+					   invoke="setGroupsHttpService_invokeHandler(event)"
+					   result="setGroupsHttpService_resultHandler(event)"
+					   fault="Core.httpService_faultHandler(event); setGroupsHttpService_faultHandler(event)"
+					   resultFormat="e4x"
+					   concurrency="last"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.ScrollPolicy;
+			import mx.events.ListEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.InvokeEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import engine.components.Window;
+			import engine.core.Core;
+			
+			[Bindable]
+			public var editGroupWindowName:String = '';
+			[Bindable]
+			public var editWindowName:String = '';
+			
+			[Bindable]
+			public var newItemName:String = '';
+			
+			[Bindable]
+			public var getGroupsHttpServiceAction:String = '';
+			[Bindable]
+			public var setGroupsHttpServiceAction:String = '';
+			
+			[Bindable]
+			public var getGroupsHttpServiceModule:String = '';
+			[Bindable]
+			public var setGroupsHttpServiceModule:String = '';
+			
+			[Bindable]
+			public var getGroupsHttpServiceController:String = '';
+			[Bindable]
+			public var setGroupsHttpServiceController:String = '';
+			
+			[Bindable]
+			public var valueToChange:String;
+			
+			private var _columns:Array;
+			
+			[Bindable]
+			public function set columns(value:Array):void
+			{
+				_columns = value;
+				
+				dataGridSet.columns = columns;
+			}
+			
+			public function get columns():Array
+			{
+				return _columns;
+			}
+			
+			protected function getGroupsHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				inProgress = true;
+				getGroupsHttpService_invokeFunction();
+			}
+			
+			public function getGroupsHttpService_invokeFunction():void
+			{
+				//override function
+			}
+			
+			protected function getGroupsHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				
+				if (checkForErrors)
+				{
+					Core.checkErrors(getGroupsHttpService, label, checkForOnline)
+				}
+				
+				getGroupsHttpService_resultFunction();
+			}
+			
+			public function getGroupsHttpService_resultFunction():void
+			{
+				Core.callAfter(groupsDataGridSet_changeHandler, 100, [null]);
+				//override function
+			}
+			
+			protected function getGroupsHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+				getGroupsHttpService_faultFunction();
+			}
+			
+			public function getGroupsHttpService_faultFunction():void
+			{
+				//override function
+			}
+			
+			protected function setGroupsHttpService_invokeHandler(event:InvokeEvent):void
+			{
+				inProgress = true;
+				setGroupsHttpService_invokeFunction();
+			}
+			
+			public function setGroupsHttpService_invokeFunction():void
+			{
+				//override function
+			}
+			
+			protected function setGroupsHttpService_resultHandler(event:ResultEvent):void
+			{
+				inProgress = false;
+				
+				if (checkForErrors)
+				{
+					Core.checkErrors(setGroupsHttpService, label, checkForOnline);
+				}
+				
+				setGroupsHttpService_resultFunction();
+			}
+			
+			public function setGroupsHttpService_resultFunction():void
+			{
+				reloadFunction();
+				//override function
+			}
+			
+			protected function setGroupsHttpService_faultHandler(event:FaultEvent):void
+			{
+				inProgress = false;
+				setGroupsHttpService_faultFunction();
+			}
+			
+			public function setGroupsHttpService_faultFunction():void
+			{
+				//override function
+			}
+			
+			private function doubleClickFunction(event:MouseEvent):void
+			{
+				if (yesButtonEnabled)
+				{
+					yesButton_clickHandler(null);
+				}
+				else if (dataGridSet.dataGrid.selectedItem.@account_id > 0)
+				{
+					dataGridSet.editButton_clickHandler(null);
+				}
+			}
+			
+			public function addGroupFunction():void
+			{
+				var selectedItem:Object = new Object();
+				selectedItem['@name'] = Core.translate.to(['she_new group']);
+				Core.launcher.launch(editGroupWindowName, selectedItem, this, ['adding']);
+			}
+			
+			public function editGroupFunction():void
+			{
+				Core.launcher.launch(editGroupWindowName, groupsDataGridSet.dataGrid.selectedItem, this, ['editing']);
+			}
+			
+			public function copyGroupFunction():void
+			{
+				var selectedItem:Object = ObjectUtil.clone(groupsDataGridSet.dataGrid.selectedItem);
+				selectedItem['@item_id'] = null;
+				Core.launcher.launch(editGroupWindowName, selectedItem, this, ['adding', 'copying']);
+			}
+			
+			public function deleteGroupFunction():void
+			{
+				var window:Window = Core.launcher.launch('ConfirmWindow');
+				window.parentWindow = this;
+				
+				window['onYesFunction'] = function():void
+				{
+					requestParams = new Object();
+					
+					var array:Array = new Array();
+					for (var i:int = 0; i < groupsDataGridSet.dataGrid.selectedItems.length; i++)
+					{
+						if (groupsDataGridSet.dataGrid.selectedItems[i]['@account_id'] > 0)
+						{
+							array.push(groupsDataGridSet.dataGrid.selectedItems[i]['@item_id']);							
+						}
+					}
+					
+					requestParams.item_id = array.toString();
+					setGroupsHttpService.send(requestParams);
+					
+					Core.removeWindow(window);
+				};
+			}
+			
+			//--
+			
+			public function addFunction():void
+			{
+				var selectedItem:Object = new Object();
+				
+				if (groupsDataGridSet.dataGrid.selectedItem)
+				{
+					selectedItem['@group_id'] = String(groupsDataGridSet.dataGrid.selectedItem['@item_id']);
+				}
+				else
+				{
+					selectedItem['@group_id'] = 0;
+				}
+				
+				selectedItem['@name'] = Core.translate.to([newItemName]);
+				Core.launcher.launch(editWindowName, selectedItem, this, ['adding']);
+			}
+			
+			public function editFunction():void
+			{
+				Core.launcher.launch(editWindowName, dataGridSet.dataGrid.selectedItem, this, ['editing']);
+			}
+			
+			public function copyFunction():void
+			{
+				var selectedItem:Object = ObjectUtil.clone(dataGridSet.dataGrid.selectedItem);
+				selectedItem['@item_id'] = null;
+				Core.launcher.launch(editWindowName, selectedItem, this, ['adding', 'copying']);
+			}
+			
+			public function deleteFunction():void
+			{
+				var window:Window = Core.launcher.launch('ConfirmWindow');
+				window.parentWindow = this;
+				
+				window['onYesFunction'] = function():void
+				{
+					requestParams = new Object();
+					
+					var array:Array = new Array();
+					for (var i:int = 0; i < dataGridSet.dataGrid.selectedItems.length; i++) 
+					{
+						array.push(dataGridSet.dataGrid.selectedItems[i]['@item_id']);
+					}
+					
+					requestParams.item_id = array.toString();
+					setHttpService.send(requestParams);
+					
+					Core.removeWindow(window);
+				};
+			}
+			
+			override public function setHttpService_resultFunction():void
+			{
+				reloadFunction();
+			}
+			
+			override public function reloadFunction():void
+			{
+				getGroupsHttpService.send();
+			}
+			
+			private function superReloadFunction():void
+			{
+				if (groupsDataGridSet.dataGrid.selectedItems)
+				{
+					var array:Array = new Array();
+					
+					for (var i:int = 0; i < groupsDataGridSet.dataGrid.selectedItems.length; i++) 
+					{
+						array.push(groupsDataGridSet.dataGrid.selectedItems[i]['@item_id']);
+					}
+					
+					requestParams.item_id = null;
+					requestParams.group_id = array.toString();
+				}
+				
+				super.reloadFunction();
+			}
+			
+			protected function groupsDataGridSet_changeHandler(event:ListEvent):void
+			{
+				superReloadFunction();
+			}
+			
+			override public function yesFunction():void
+			{
+				if (parentWindow && dataGridSet.dataGrid.selectedItem)
+				{
+					parentWindow.changeValue(valueToChange, dataGridSet.dataGrid.selectedItem['@item_id']);
+					
+					Core.removeWindow(this);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:content>
+		<s:HGroup paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" gap="5">
+			<components:DataGridSet id="groupsDataGridSet"
+									height="100%"
+									
+									translateColumns="@name"
+									
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{getGroupsHttpService.lastResult.item}"
+									
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{numChildrenWindows == 0}"
+									
+									filterComboBoxEnabled="false"
+									filterEqualDropDownListEnabled="false"
+									selectionModeLabelEnabled="false"
+									setupOfTabularSectionButtonEnabled="false"
+									
+									addFunction="{addGroupFunction}"
+									
+									editFunction="{editGroupFunction}"
+									editButtonEnabled="{Core.getItem(groupsDataGridSet.dataGrid.selectedItem, '@account_id') > 0}"
+									
+									copyFunction="{copyGroupFunction}"
+									
+									deleteFunction="{deleteGroupFunction}"
+									deleteButtonEnabled="{Core.getItem(groupsDataGridSet.dataGrid.selectedItem, '@account_id') > 0 &amp;&amp; dataGridSet.dataProvider.length() == 0}"
+									
+									reloadFunction="{reloadFunction}"
+									
+									change="groupsDataGridSet_changeHandler(event)">
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['group'])}" dataField="@name"/>
+				</components:columns>
+			</components:DataGridSet>
+			
+			<components:DataGridSet id="dataGridSet"
+									width="100%"
+									height="100%"
+									
+									rowCount="15"
+									
+									translateColumns="@name"
+									
+									reloadOnLocalesChange="true"
+									
+									dataProvider="{getHttpService.lastResult.item}"
+									
+									selectionMode="multipleRows"
+									horizontalScrollPolicy="{ScrollPolicy.AUTO}"
+									controlPanelEnabled="{numChildrenWindows == 0}"
+									selectionModeLabelEnabled="false"
+									setupOfTabularSectionButtonEnabled="false"
+									
+									doubleClickFunction="{doubleClickFunction}"
+									
+									addFunction="{addFunction}"
+									
+									editFunction="{editFunction}"
+									editButtonEnabled="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@account_id') > 0}"
+									
+									copyFunction="{copyFunction}"
+									
+									deleteFunction="{deleteFunction}"
+									deleteButtonEnabled="{Core.getItem(dataGridSet.dataGrid.selectedItem, '@account_id') > 0}"
+									
+									reloadFunction="{superReloadFunction}">
+				
+				<components:columns>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['name'])}" dataField="@name"/>
+					<mx:AdvancedDataGridColumn width="200" headerText="{Core.translate.to(['description'])}" dataField="@description"/>
+				</components:columns>
+			</components:DataGridSet>
+		</s:HGroup>
+	</components:content>
+</components:Window>
+
