@@ -331,7 +331,7 @@
 										<extended:ComboBox id="periodicityComboBox" width="100%" minWidth="0" widthInChars="5" height="{Core.size * Core.sizeMultiplier}" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" labelField="@name" translateColumns="@name" dataProvider="{Core.toArrayList(Core.data.periodicity.dataProvider)}" selectedIndex="0" defaultSelectedIndex="0" selectedValue="{getValue(data, 'periodicity_id')}" change="{changeValue('periodicity_id', Core.getItem(event.target.selectedItem, '@item_id'), action == 'adding')}"/>
 									</s:HGroup>
 
-									<extended:NumericStepper id="everyNDaysNumericStepper" width="{Core.size * Core.sizeMultiplier * 2 + 5}" height="{Core.size * Core.sizeMultiplier}" visible="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') == 7}" minimum="1" maximum="999999999" stepSize="1" value="{getValue(data, 'every_n_days')}" change="{changeValue('every_n_days', event.target.value, action == 'adding')}"/>
+									<extended:NumericStepper id="everyNDaysNumericStepper" width="{Core.size * Core.sizeMultiplier * 2 + 5}" height="{Core.size * Core.sizeMultiplier}" visible="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') == 7}" minimum="1" maximum="999999999" stepSize="0.01" value="{getValue(data, 'every_n_days')}" change="{changeValue('every_n_days', event.target.value, action == 'adding')}"/>
 								</s:HGroup>
 
 								<s:HGroup height="{Core.size * Core.sizeMultiplier}" enabled="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') == 2}" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" verticalAlign="middle" gap="5">
@@ -347,7 +347,7 @@
 								</s:HGroup>
 								
 								<s:HGroup width="100%" visible="{parentWindow.mode == 'planning'}" includeInLayout="{parentWindow.mode == 'planning'}" gap="5">
-									<extended:NumericStepper id="repeatsNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" enabled="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') > 1}" minimum="0" maximum="999999999" stepSize="1" value="{getValue(data, 'repeats')}" change="{changeValue('repeats', event.target.value, action == 'adding')}"/>
+									<extended:NumericStepper id="repeatsNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" enabled="{Core.getItem(periodicityComboBox.selectedItem, '@item_id') > 1}" minimum="0" maximum="999999999" stepSize="0.01" value="{getValue(data, 'repeats')}" change="{changeValue('repeats', event.target.value, action == 'adding')}"/>
 									<s:Label width="100%" height="{Core.size * Core.sizeMultiplier}" textAlign="right" text="{Core.translate.to(['it_processed'])}: {Core.toNumber(getValue(data, 'repeats_done'))}{getValue(data, 'repeats') == 0 ? '' : ' | ' + Core.translate.to(['left']) + ': ' + (getValue(data, 'repeats') - Core.toNumber(getValue(data, 'repeats_done')))}" verticalAlign="middle"/>
 									
 									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>
@@ -383,20 +383,8 @@
 									<components:Button id="contributionReferenceButton" paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="magnifier" click="contributionReferenceButton_clickHandler(event)"/>
 								</s:HGroup>
 								
-								<s:HGroup width="100%" gap="5" verticalAlign="middle">
-									<extended:NumericStepper id="sumNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="0" maximum="999999999" stepSize="1" value="{getValue(data, 'sum')}" keyDown="sumNumericStepper_keyDownHandler(event)" change="sumNumericStepper_changeHandler(event)"/>
-									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['sum', sumNumericStepper])}"/>
-									
-									<s:Label width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" text="|" textAlign="center" verticalAlign="middle"/>
-									
-									<s:RadioButton id="incomeRadionButton" groupName="directionRadionButtonGroup" selected="{Core.toBoolean(getValue(data, 'direction'))}" label="{Core.translate.to(['income'])}" change="directionRadionButtonGroup_changeHandler()"/>
-									<s:RadioButton id="outcomeRadionButton" groupName="directionRadionButtonGroup" selected="{!Core.toBoolean(getValue(data, 'direction'))}" label="{Core.translate.to(['outcome'])}" change="directionRadionButtonGroup_changeHandler()"/>
-									
-									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>
-								</s:HGroup>
-								
 								<s:HGroup width="100%" gap="5">
-									<extended:NumericStepper id="quantityNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="1" maximum="999999999" stepSize="1" value="{getValue(data, 'quantity')}" change="quantityNumericStepper_changeHandler(event)"/>
+									<extended:NumericStepper id="quantityNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="1" maximum="999999999" stepSize="0.01" value="{getValue(data, 'quantity')}" change="quantityNumericStepper_changeHandler(event)"/>
 									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['quantity', quantityNumericStepper])}"/>
 									
 									<!--<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['unit'])}:" verticalAlign="middle"/>
@@ -407,7 +395,7 @@
 								</s:HGroup>
 								
 								<s:HGroup width="100%" gap="5">
-									<extended:NumericStepper id="priceNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="0" maximum="999999999" stepSize="1" value="{getValue(data, 'price')}" change="priceNumericStepper_changeHandler(event)"/>
+									<extended:NumericStepper id="priceNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="0" maximum="999999999" stepSize="0.01" value="{getValue(data, 'price')}" change="priceNumericStepper_changeHandler(event)"/>
 									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['price', priceNumericStepper])}"/>
 									
 									<!--<s:Label height="{Core.size * Core.sizeMultiplier}" text="{Core.translate.to(['currency'])}:" verticalAlign="middle"/>
@@ -415,6 +403,18 @@
 									<extended:ComboBox width="80" height="{Core.size * Core.sizeMultiplier}" labelField="@name" translateColumns="@name" prompt="{Core.translate.to(['currency'])}"/>
 									
 									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>-->
+								</s:HGroup>
+								
+								<s:HGroup width="100%" gap="5" verticalAlign="middle">
+									<extended:NumericStepper id="sumNumericStepper" width="{Core.size * 100}" height="{Core.size * Core.sizeMultiplier}" minimum="0" maximum="999999999" stepSize="0.01" value="{getValue(data, 'sum')}" keyDown="sumNumericStepper_keyDownHandler(event)" change="sumNumericStepper_changeHandler(event)"/>
+									<components:Button paddingWidth="0" paddingHeight="0" borderEnabled="false" icon="calculator" click="{Core.launcher.launch('CalculatorWindow', null, this, ['sum', sumNumericStepper])}"/>
+									
+									<s:Label width="100%" minWidth="0" height="{Core.size * Core.sizeMultiplier}" text="|" textAlign="center" verticalAlign="middle"/>
+									
+									<s:RadioButton id="incomeRadionButton" groupName="directionRadionButtonGroup" selected="{Core.toBoolean(getValue(data, 'direction'))}" label="{Core.translate.to(['income'])}" change="directionRadionButtonGroup_changeHandler()"/>
+									<s:RadioButton id="outcomeRadionButton" groupName="directionRadionButtonGroup" selected="{!Core.toBoolean(getValue(data, 'direction'))}" label="{Core.translate.to(['outcome'])}" change="directionRadionButtonGroup_changeHandler()"/>
+									
+									<s:Spacer width="{Core.size * Core.sizeMultiplier * 2 + 5}"/>
 								</s:HGroup>
 							</s:VGroup>
 						</s:HGroup>

@@ -48,9 +48,9 @@ package engine.core
 	public dynamic class Core
 	{
 		[Bindable]
-		public static var version:String = '1.0.8';
+		public static var version:String = '1.0.12';
 		[Bindable]
-		public static var build:String = '01.04.2018';
+		public static var build:String = '03.04.2018';
 		[Bindable]
 		public static var versionEnabled:Boolean = true;
 		
