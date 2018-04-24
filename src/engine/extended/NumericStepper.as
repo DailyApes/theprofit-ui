@@ -2,6 +2,9 @@ package engine.extended
 {
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.events.TextEvent;
+	
+	import mx.events.FlexEvent;
 	
 	import spark.components.NumericStepper;
 	
@@ -14,6 +17,21 @@ package engine.extended
 		{
 			super();
 			addEventListener(Event.CHANGE, changeHandler);
+			
+			addEventListener(FlexEvent.CREATION_COMPLETE, creationCompleteHandler);
+		}
+		
+		protected function creationCompleteHandler(event:FlexEvent):void
+		{
+			textDisplay.addEventListener(Event.CHANGE, textInputHandler);
+		}
+		
+		protected function textInputHandler(event:Event):void
+		{
+			while (textDisplay.text.indexOf(',') != -1)
+			{
+				textDisplay.text = textDisplay.text.replace(',', '.');
+			}
 		}
 		
 		private function changeHandler(event:Event):void

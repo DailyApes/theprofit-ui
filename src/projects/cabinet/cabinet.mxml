@@ -54,7 +54,7 @@
 			
 			protected function creationCompleteHandler(event:FlexEvent):void
 			{
-				Core.serverUrl = 'ui';
+				Core.serverUrl = 'https://gate-vk.theprofit.tk/ui';
 				
 				Core.getHttpServiceModule = 'cabinet';
 				Core.setHttpServiceModule = 'cabinet';
